@@ -14,11 +14,11 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 
 params = VGCMParameters(
-    alpha=1e9, lmbda=0, tau_limits=(0, 10), theta_limits=(0, np.pi),
+    alpha=1e9, lmbda=0, tau_limits=(0, 10), theta_limits=(np.pi/8, np.pi-np.pi/8),
     moment_arm=1., axis=np.array([0, 1, 0]))
 model = VGCMIdealModel(params)
 
-theta = np.linspace(0, np.pi, 50, True)
+theta = np.linspace(params.theta_lims[0], params.theta_lims[1], 50, True)
 
 g = np.array([0, 0, -9.81])
 ext_f = np.zeros_like(g)
@@ -51,7 +51,6 @@ line_30kg, = ax.plot(theta, force_30kg, label="Mass: 30 Kg")
 def make_update(n_frames, axis):
     def update(frame):
         rot = 2 * np.pi * frame / n_frames
-        print(rot)
         R = Rotation.from_rotvec(axis * rot)
         gr = R.as_matrix() @ g
         line_10kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, 10, gr, ext_f))
@@ -67,6 +66,41 @@ np.set_printoptions(precision=2)
 
 n_frames = 100
 axis = np.array([0.707, 0.707, 0])
-ani_10kg = animation.FuncAnimation(fig, make_update(n_frames, axis),
-                                   frames=n_frames, interval=50, blit=False)
+ani = animation.FuncAnimation(fig, make_update(n_frames, axis),
+                              frames=n_frames, interval=50, blit=False)
+plt.show()
+
+fig, ax = plt.subplots()
+ax.set_xlim(0, np.pi)
+ax.set_ylim(-200, 200)
+ax.set_xlabel("Arm Angle (rads)")
+ax.set_ylabel("Joint Torque (Nm)")
+ax.set_title("Moment Induced by Gravity for a Revolute Joint with Unit Length Arm")
+ax.legend()
+
+line_20kg, = ax.plot(theta, force_10kg, label="Required Force")
+linear_20kg, = ax.plot(theta, force_10kg, label="Compensation")
+dot, = ax.plot(0, 0, 'ro', label="Linearisaion Point")
+
+def make_update(n_frames, axis):
+    def update(frame):
+        rot = np.pi * np.cos(2 * np.pi * frame / n_frames) / 4
+        R = Rotation.from_rotvec(axis * rot)
+        gr = R.as_matrix() @ g
+
+        target_theta = 0.8 + 0.2 * np.sin(4*np.pi*frame / n_frames)
+
+        line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, 20, gr, ext_f))
+        linear_20kg.set_ydata(model.calculate_linear_model(theta, target_theta, 20, gr, ext_f))
+        dot.set_xdata([target_theta])
+        target_force = model.calculate_expected_torque_to_compensate(np.array([target_theta]), 20, gr, ext_f)
+        dot.set_ydata([target_force])
+        ax.legend()
+        return [line_20kg, linear_20kg, dot]
+    return update
+
+n_frames=200
+axis = np.array([1, 0, 0])
+ani = animation.FuncAnimation(fig, make_update(n_frames, axis),
+                              frames=n_frames, interval=50, blit=False)
 plt.show()

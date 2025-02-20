@@ -74,3 +74,12 @@ class VGCMIdealModel(object):
         F = -mass * gravity + ext_force
         tau = np.cross(r, F)
         return tau.dot(self.params.axis)
+
+    def calculate_linear_model(self, positions, target_position, mass, gravity, ext_force):
+        dx = 0.01
+        grad_positions = np.array([target_position-dx, target_position, target_position+dx])
+        req_torque = self.calculate_expected_torque_to_compensate(
+            grad_positions, mass, gravity, ext_force)
+        m = (req_torque[2] - req_torque[0]) / (2 * dx)
+        c = req_torque[1]
+        return m * (positions - target_position) + c
