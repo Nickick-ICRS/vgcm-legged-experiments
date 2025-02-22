@@ -53,6 +53,7 @@ Thumbs.db
 # logs
 logs
 runs
+remote_experiments
 
 # other
 *.egg-info
