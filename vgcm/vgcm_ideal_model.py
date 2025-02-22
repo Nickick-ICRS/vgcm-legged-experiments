@@ -1,85 +1,57 @@
-from typing import Tuple
+from typing import Tuple, List
 
-import numpy as np
+import torch
 
 
-class VGCMParameters:
+class VGCMParameters(torch.nn.Module):
     def __init__(self, alpha: float = 100.0, lmbda: float = 0.0,
                  tau_limits: Tuple[float, float] = (0., 10.),
                  theta_limits: Tuple[float, float] = (-3.141, 3.141),
-                 moment_arm: float = 0.3, axis: np.ndarray = np.array([0, 1, 0])):
+                 axis: torch.Tensor = torch.tensor([0, 1, 0], dtype=torch.float32)):
         """
         @param alpha The adjustment rate (Nm/s)
         @param lmbda Input lag (s)
         @param tau_limits (minimum, maximum) Torque limits (Nm)
         @param theta_limits (minimum, maximum) Position limits (rads)
-        @param moment_arm Length of the moment arm (m)
+        @param axis Axis of rotation of the joint
         """
-        self.alpha = alpha
-        self.lmbda = lmbda
-        self.tau_lims = tau_limits
-        self.theta_lims = theta_limits
-        self.moment_arm = moment_arm
-        self.axis = axis
+        super().__init__()
+        self.alpha = torch.nn.Parameter(torch.tensor([alpha], dtype=torch.float32), requires_grad=False)
+        self.lmbda = torch.nn.Parameter(torch.tensor([lmbda], dtype=torch.float32), requires_grad=False)
+        self.tau_lims = torch.nn.Parameter(torch.tensor(tau_limits, dtype=torch.float32), requires_grad=False)
+        self.theta_lims = torch.nn.Parameter(torch.tensor(theta_limits, dtype=torch.float32), requires_grad=False)
+        self.axis = torch.nn.Parameter(axis, requires_grad=False)
 
 
-class VGCMIdealModel(object):
-    def __init__(self, params: VGCMParameters = VGCMParameters()):
-        self.params = params
-        self.command_time = 0
-        self.command_pos = 0
-        self.command_torque = 0
-        self._r0 = np.array([0, 0, -1])
-        self._kxr = np.cross(self.params.axis, self._r0)
-        self._kdr = np.dot(self.params.axis, self._r0)
-    
-    def update(self, position: float, current_time: float) -> float:
-        """
-        @detail Update the VGCM and calculate applied force
-        @param position Current joint position
-        @param current_time Current simulation time
+class VGCMIdealModel(torch.nn.Module):
+    def __init__(self, params: List[VGCMParameters] = [VGCMParameters()]):
+        super().__init__()
+        self.alphas = torch.stack([p.alpha for p in params])
+        self.lmdas = torch.stack([p.lmbda for p in params])
+        self.tau_lims = torch.stack([p.tau_lims for p in params])
+        self.theta_lims = torch.stack([p.theta_lims for p in params])
+        self.axes = torch.stack([p.axis for p in params])
+        self._r0 = torch.stack([torch.tensor([0, 0, -1], dtype=torch.float32) for p in params])
+        self._kxr = torch.cross(self.axes, self._r0)
+        self._kdr = (self.axes * self._r0).sum(-1, keepdims=True)
 
-        @returns Torque applied by VGCMIdealModel
-        """
+    def calculate_expected_torque_to_compensate(self, positions, masses, gravities, ext_forces):
+        c = torch.cos(positions)
+        s = torch.sin(positions)
+        r = c * self._r0 + s * self._kxr + (1-c) * self._kdr * self.axes
+        F = -masses * gravities + ext_forces
+        tau = torch.cross(r, F)
+        return (tau * self.axes).sum(-1, keepdims=True)
 
-    def command(self, position: float, torque: float, current_time: float):
-        """
-        @detail Command the VGCM to apply a given torque at a given position
-
-        @param position The position to apply the torque at
-        @param torque The torque to apply
-        @param current_time Current simulation time
-        """
-        self.command_pos = position
-        self.command_torque = torque
-        # Don't apply input lag if already moving
-        if current_time >= self.command_time + self.params.lmbda:
-            self.command_time = current_time - self.params.lmbda
-        else:
-            self.command_time = current_time
-
-    def _calculate_torque(self, position, current_time):
-        raise NotImplementedError()
-
-    def _update_internal_model(self, current_time):
-        """
-        @detail Internal model used by inherited classes
-        """
-        raise NotImplementedError()
-
-    def calculate_expected_torque_to_compensate(self, position, mass, gravity, ext_force):
-        c = np.cos(position)[:, np.newaxis]
-        s = np.sin(position)[:, np.newaxis]
-        r = c * self._r0 + s * self._kxr + (1-c) * self._kdr * self.params.axis
-        F = -mass * gravity + ext_force
-        tau = np.cross(r, F)
-        return tau.dot(self.params.axis)
-
-    def calculate_linear_model(self, positions, target_position, mass, gravity, ext_force):
-        dx = 0.01
-        grad_positions = np.array([target_position-dx, target_position, target_position+dx])
-        req_torque = self.calculate_expected_torque_to_compensate(
-            grad_positions, mass, gravity, ext_force)
-        m = (req_torque[2] - req_torque[0]) / (2 * dx)
-        c = req_torque[1]
-        return m * (positions - target_position) + c
+    def calculate_linear_model(self, positions, target_positions, mass, gravity, ext_force):
+        dx = torch.ones_like(target_positions) * 0.01
+        grad_positions = torch.stack([target_positions-dx, target_positions, target_positions+dx], dim=-1).squeeze(-2)
+        req_torque_0 = self.calculate_expected_torque_to_compensate(
+            grad_positions[:, 0].unsqueeze(-1), mass, gravity, ext_force)
+        req_torque_1 = self.calculate_expected_torque_to_compensate(
+            grad_positions[:, 1].unsqueeze(-1), mass, gravity, ext_force)
+        req_torque_2 = self.calculate_expected_torque_to_compensate(
+            grad_positions[:, 2].unsqueeze(-1), mass, gravity, ext_force)
+        m = (req_torque_2 - req_torque_0) / (2 * dx)
+        c = req_torque_1
+        return m * (positions - target_positions) + c

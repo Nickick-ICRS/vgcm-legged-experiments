@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from cycler import cycler
 import numpy as np
+import torch
 from scipy.spatial.transform import Rotation
 
 
@@ -15,16 +16,19 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 params = VGCMParameters(
     alpha=1e9, lmbda=0, tau_limits=(0, 10), theta_limits=(np.pi/8, np.pi-np.pi/8),
-    moment_arm=1., axis=np.array([0, 1, 0]))
-model = VGCMIdealModel(params)
+    axis=torch.tensor([0, 1, 0], dtype=torch.float32))
+model = VGCMIdealModel([params])
 
-theta = np.linspace(params.theta_lims[0], params.theta_lims[1], 50, True)
+theta = torch.linspace(params.theta_lims[0], params.theta_lims[1], 50).unsqueeze(-1)
 
-g = np.array([0, 0, -9.81])
-ext_f = np.zeros_like(g)
-force_10kg = model.calculate_expected_torque_to_compensate(theta, 10, g, ext_f)
-force_20kg = model.calculate_expected_torque_to_compensate(theta, 20, g, ext_f)
-force_30kg = model.calculate_expected_torque_to_compensate(theta, 30, g, ext_f)
+g = torch.stack([torch.tensor([0, 0, -9.81], dtype=torch.float32) for i in range(theta.shape[0])])
+ext_f = torch.zeros_like(g)
+m10 = torch.tensor([10 for i in range(theta.shape[0])], dtype=torch.float32).unsqueeze(-1)
+m20 = torch.tensor([20 for i in range(theta.shape[0])], dtype=torch.float32).unsqueeze(-1)
+m30 = torch.tensor([30 for i in range(theta.shape[0])], dtype=torch.float32).unsqueeze(-1)
+force_10kg = model.calculate_expected_torque_to_compensate(theta, m10, g, ext_f)
+force_20kg = model.calculate_expected_torque_to_compensate(theta, m20, g, ext_f)
+force_30kg = model.calculate_expected_torque_to_compensate(theta, m30, g, ext_f)
 
 fig, ax = plt.subplots()
 ax.plot(theta, force_10kg, label="Mass: 10 Kg")
@@ -51,13 +55,13 @@ line_30kg, = ax.plot(theta, force_30kg, label="Mass: 30 Kg")
 def make_update(n_frames, axis):
     def update(frame):
         rot = 2 * np.pi * frame / n_frames
-        R = Rotation.from_rotvec(axis * rot)
-        gr = R.as_matrix() @ g
-        line_10kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, 10, gr, ext_f))
-        line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, 20, gr, ext_f))
-        line_30kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, 30, gr, ext_f))
+        R = torch.stack([torch.tensor(Rotation.from_rotvec(axis * rot).as_matrix(), dtype=torch.float32) for i in range(theta.shape[0])])
+        gr = torch.bmm(R, g.unsqueeze(-1)).squeeze(-1)
+        line_10kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m10, gr, ext_f))
+        line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m20, gr, ext_f))
+        line_30kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m30, gr, ext_f))
         ax.set_title(f"Moment Induced by Gravity for a Revolute Joint with Unit Length Arm\n"
-                     f"With Relative Gravity {gr}")
+                     f"With Relative Gravity {gr[0]}")
         ax.legend()
         return [line_10kg, line_20kg, line_30kg]
     return update
@@ -85,16 +89,16 @@ dot, = ax.plot(0, 0, 'ro', label="Linearisaion Point")
 def make_update(n_frames, axis):
     def update(frame):
         rot = np.pi * np.cos(2 * np.pi * frame / n_frames) / 4
-        R = Rotation.from_rotvec(axis * rot)
-        gr = R.as_matrix() @ g
+        R = torch.stack([torch.tensor(Rotation.from_rotvec(axis * rot).as_matrix(), dtype=torch.float32) for i in range(theta.shape[0])])
+        gr = torch.bmm(R, g.unsqueeze(-1)).squeeze(-1)
 
-        target_theta = 0.8 + 0.2 * np.sin(4*np.pi*frame / n_frames)
+        target_thetas = torch.tensor([0.8 + 0.2 * np.sin(4*np.pi*frame / n_frames) for i in range(theta.shape[0])], dtype=torch.float32).unsqueeze(-1)
 
-        line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, 20, gr, ext_f))
-        linear_20kg.set_ydata(model.calculate_linear_model(theta, target_theta, 20, gr, ext_f))
-        dot.set_xdata([target_theta])
-        target_force = model.calculate_expected_torque_to_compensate(np.array([target_theta]), 20, gr, ext_f)
-        dot.set_ydata([target_force])
+        line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m20, gr, ext_f))
+        linear_20kg.set_ydata(model.calculate_linear_model(theta, target_thetas, m20, gr, ext_f))
+        dot.set_xdata([target_thetas[0]])
+        target_forces = model.calculate_expected_torque_to_compensate(target_thetas, m20, gr, ext_f)
+        dot.set_ydata([target_forces[0]])
         ax.legend()
         return [line_20kg, linear_20kg, dot]
     return update
