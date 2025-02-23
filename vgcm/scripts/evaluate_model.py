@@ -23,7 +23,7 @@ def parse_args():
 
     parser.add_argument("--onnx_dir", type=str, default=default_onnx_dir, help=f"Path to directory containing ONNX models (default: {default_onnx_dir})")
     parser.add_argument("--xml_path", type=str, default=default_xml_path, help=f"Path to robot MJCF model (default: {default_xml_path})")
-    parser.add_argument("--test_duration", type=int, default=20, help="Simulation duration in seconds (default: 20)")
+    parser.add_argument("--test_duration", type=float, default=20, help="Simulation duration in seconds (default: 20)")
     parser.add_argument("--headless", action='store_true', help="Run without visualiser")
     args = parser.parse_args()
     return args

@@ -37,8 +37,16 @@ class RobotState:
         state_str += f"  Joint Positions (q): {self.q}\n"
         state_str += f"  Joint Velocities (dq): {self.dq}\n"
         state_str += f"  Joint Torques (tau): {self.tau}\n"
+
+        state_str += f"  Base Pos: {self.base_pos}\n"
+        state_str += f"  Base Quat: {self.base_quat}\n"
+        state_str += f"  Base Lin Vel: {self.base_lin_vel}\n"
+        state_str += f"  Base Ang Vel: {self.base_ang_vel}\n"
+        state_str += f"  Projected Gravity: {self.projected_gravity}\n"
+
         state_str += f"  IMU Data (Quaternion): {self.imu_data_quat}\n"
         state_str += f"  IMU Data (Gyroscope): {self.imu_data_gyro}\n"
+        state_str += f"  IMU Data (Accelerometer): {self.imu_data_acc}\n"
         state_str += f"  Has Gravity Compensators: {self.has_gravity_compensators}\n"
 
         if self.has_gravity_compensators:

@@ -35,10 +35,10 @@ class Simulator:
         self.controller = controller
         self.dt = self.mujoco_model.opt.timestep
         self.fps = 1. / self.dt
-        self.steps = test_duration * self.fps
+        self.steps = int(test_duration * self.fps)
         self.state = RobotState()
 
-        self.commands = np.array([1, 0, 0], dtype=np.float32)
+        self.commands = np.array([1., 0, 0], dtype=np.float32)
 
         if self.visualise:
             self.viewer = mujoco.viewer.launch_passive(
@@ -53,6 +53,8 @@ class Simulator:
 
     def run(self):
         print("Starting MuJoCo simulation...")
+        # Step once to fill state etc.
+        mujoco.mj_step(self.mujoco_model, self.mujoco_data)
         if self.visualise:
             rate = Rate(60.)
             frame = 0
@@ -89,20 +91,29 @@ class Simulator:
         base_id = self.mujoco_model.body(name="base_Link").id
 
         self.state.base_pos = self.mujoco_data.xpos[base_id]
-        self.state.base_quat = self.mujoco_data.xquat[base_id]
-        self.state.base_lin_vel = self.mujoco_data.cvel[base_id][:3]
-        self.state.base_ang_vel = self.mujoco_data.cvel[base_id][3:]
-        self.state.projected_gravity = self.mujoco_data.xmat[base_id].reshape(3, 3) @ self.mujoco_model.opt.gravity
+        # Mujoco stores the quat W X Y Z, we want X Y Z W
+        quat_wxyz = self.mujoco_data.xquat[base_id]
+        self.state.base_quat[:3] = quat_wxyz[1:]
+        self.state.base_quat[3] = quat_wxyz[0]
+        base_mat = self.mujoco_data.xmat[base_id].reshape(3, 3)
+        # In global frame -> convert to local
+        self.state.base_lin_vel = base_mat.transpose() @ self.mujoco_data.cvel[base_id][3:]
+        self.state.base_ang_vel = base_mat.transpose() @ self.mujoco_data.cvel[base_id][:3]
+        self.state.projected_gravity = base_mat.transpose() @ self.mujoco_model.opt.gravity
         
         imu_quat_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "quat")
         imu_gyro_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "gyro")
         imu_acc_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "acc")
-        for i in range(4):
-            self.state.imu_data_quat[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_quat_id] + i]
+        # Mujoco stores the quat W X Y Z, we want X Y Z W
+        self.state.imu_data_quat[3] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_quat_id]]
         for i in range(3):
+            # Mujoco stores the quat W X Y Z, we want X Y Z W
+            self.state.imu_data_quat[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_quat_id] + i+1]
             self.state.imu_data_gyro[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_gyro_id] + i]
             self.state.imu_data_acc[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_acc_id] + i]
+
         self.state.stamp = self.mujoco_data.time
+        print(self.state)
 
     def control(self):
         control = self.controller.control(self.state, self.commands)

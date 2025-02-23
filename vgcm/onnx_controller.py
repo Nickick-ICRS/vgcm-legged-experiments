@@ -51,8 +51,7 @@ class Controller:
         inputs = {self.session.get_inputs()[0].name: state_input}
         outputs = self.session.run(None, inputs)[0]
         self._prev_actions = outputs
-        # Wheels command v, other command x
-
+        # Wheels command v, others command x
         taus = self._Kps * (self._scale_pos * outputs + self._default_dof_pos - robot_state.q) - self._Kps * robot_state.dq
         WHEELS = [3, 7]
         taus[WHEELS] = self._Kds[WHEELS] * (self._scale_vel * outputs[WHEELS] - robot_state.dq[WHEELS])
@@ -65,7 +64,7 @@ class Controller:
     def _extract_state(self, state: RobotState, commands):
         pos_dofs = [0, 1, 2,
                     4, 5, 6]
-        state_input = np.concatenate([
+        obs = np.concatenate([
             state.base_ang_vel * self._obs_scale_base_ang_vel,
             state.projected_gravity * self._obs_scale_g,
             (state.q - self._default_dof_pos)[pos_dofs] * self._obs_scale_pos,
@@ -73,6 +72,4 @@ class Controller:
             self._prev_actions,
             commands[:3] * self._obs_scale_cmd
         ])
-        if state.projected_gravity[2] > -9.:
-            raise
-        return state_input.astype(np.float32)
+        return obs.astype(np.float32)
