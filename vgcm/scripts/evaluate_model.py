@@ -7,12 +7,14 @@ from vgcm.onnx_controller import Controller
 
 
 def main(args):
+    controllers = []
     for model_file in os.listdir(args.onnx_dir):
         if model_file.endswith(".onnx"):
             onnx_model_path = os.path.join(args.onnx_dir, model_file)
-            controller = Controller(onnx_model_path)
-            sim = Simulator(args.xml_path, controller, test_duration=args.test_duration, headless=args.headless)
-            sim.run()
+            controllers.append(Controller(onnx_model_path))
+    controllers = [Controller(onnx_model_path) for _ in range(10)]
+    sim = Simulator(args.xml_path, controllers, test_duration=args.test_duration, headless=args.headless)
+    sim.run()
 
 
 def parse_args():
