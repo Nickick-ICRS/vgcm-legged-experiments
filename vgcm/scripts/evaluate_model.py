@@ -3,13 +3,15 @@ import os
 
 from legged_gym import LEGGED_GYM_ROOT_DIR
 from vgcm.mujoco_sim import Simulator
+from vgcm.onnx_controller import Controller
 
 
 def main(args):
     for model_file in os.listdir(args.onnx_dir):
         if model_file.endswith(".onnx"):
             onnx_model_path = os.path.join(args.onnx_dir, model_file)
-            sim = Simulator(args.xml_path, onnx_model_path, test_duration=args.test_duration, headless=args.headless)
+            controller = Controller(onnx_model_path)
+            sim = Simulator(args.xml_path, controller, test_duration=args.test_duration, headless=args.headless)
             sim.run()
 
 

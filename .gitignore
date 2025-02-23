@@ -58,3 +58,4 @@ remote_experiments
 # other
 *.egg-info
 __pycache__
+*MUUJOCO_LOG.TXT

@@ -4,15 +4,11 @@ import onnxruntime as ort
 
 import os
 
+import numpy as np
+
 from vgcm.simple_rate import Rate
 from vgcm.robot_state import RobotState
-
-
-def load_onnx_model(onnx_path):
-    print(f"Loading ONNX model from {onnx_path}...")
-    session = ort.InferenceSession(onnx_path)
-    print("ONNX model loaded successfully.")
-    return session
+from vgcm.onnx_controller import Controller
 
 
 def prepare_mujoco_xml(model_xml, xml_path):
@@ -33,14 +29,16 @@ def load_robot_model(xml_path):
 
 
 class Simulator:
-    def __init__(self, xml_path, onnx_model_path, test_duration=20, headless=False):
+    def __init__(self, xml_path, controller: Controller, test_duration=20, headless=False):
         self.mujoco_model, self.mujoco_data = load_robot_model(xml_path)
         self.visualise = not headless
-        self.onnx_sesh = load_onnx_model(onnx_model_path)
+        self.controller = controller
         self.dt = self.mujoco_model.opt.timestep
         self.fps = 1. / self.dt
         self.steps = test_duration * self.fps
         self.state = RobotState()
+
+        self.commands = np.array([1, 0, 0], dtype=np.float32)
 
         if self.visualise:
             self.viewer = mujoco.viewer.launch_passive(
@@ -79,13 +77,22 @@ class Simulator:
 
     def read_state(self):
         for i in range(self.state.num_joints):
-            self.state.q[i] = self.mujoco_data.qpos[i + 6]
+            # Quaternion + Pos, so 7 variables
+            self.state.q[i] = self.mujoco_data.qpos[i + 7]
             self.state.dq[i] = self.mujoco_data.qvel[i + 6]
             self.state.tau[i] = self.mujoco_data.ctrl[i]
 
         for i in range(self.state.num_compensators):
             # TODO: Process GC states
             pass
+
+        base_id = self.mujoco_model.body(name="base_Link").id
+
+        self.state.base_pos = self.mujoco_data.xpos[base_id]
+        self.state.base_quat = self.mujoco_data.xquat[base_id]
+        self.state.base_lin_vel = self.mujoco_data.cvel[base_id][:3]
+        self.state.base_ang_vel = self.mujoco_data.cvel[base_id][3:]
+        self.state.projected_gravity = self.mujoco_data.xmat[base_id].reshape(3, 3) @ self.mujoco_model.opt.gravity
         
         imu_quat_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "quat")
         imu_gyro_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "gyro")
@@ -98,4 +105,6 @@ class Simulator:
         self.state.stamp = self.mujoco_data.time
 
     def control(self):
-        pass
+        control = self.controller.control(self.state, self.commands)
+        for i in range(self.state.num_joints):
+            self.mujoco_data.ctrl[i] = control.tau[i]

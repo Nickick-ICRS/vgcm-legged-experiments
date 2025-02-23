@@ -7,6 +7,12 @@ class RobotState:
         self.dq = np.zeros(self.num_joints)
         self.tau = np.zeros(self.num_joints)
 
+        self.base_quat = np.zeros(4)
+        self.base_pos = np.zeros(3)
+        self.base_lin_vel = np.zeros(3)
+        self.base_ang_vel = np.zeros(3)
+        self.projected_gravity = np.zeros(3)
+
         self.stamp = 0
         self.imu_data_quat = np.zeros(4)
         self.imu_data_gyro = np.zeros(3)

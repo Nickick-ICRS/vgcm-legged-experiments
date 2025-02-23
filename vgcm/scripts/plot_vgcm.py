@@ -66,8 +66,6 @@ def make_update(n_frames, axis):
         return [line_10kg, line_20kg, line_30kg]
     return update
 
-np.set_printoptions(precision=2)
-
 n_frames = 100
 axis = np.array([0.707, 0.707, 0])
 ani = animation.FuncAnimation(fig, make_update(n_frames, axis),
