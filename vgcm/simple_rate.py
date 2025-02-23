@@ -12,4 +12,5 @@ class Rate:
         sleep_dur = self.frame_duration - dt
         if sleep_dur > 0:
             time.sleep(sleep_dur)
-        self.last_time += sleep_dur
+            self.last_time += sleep_dur
+        self.last_time = now

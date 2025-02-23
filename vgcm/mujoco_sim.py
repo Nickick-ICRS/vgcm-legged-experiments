@@ -5,6 +5,7 @@ import onnxruntime as ort
 import os
 
 from vgcm.simple_rate import Rate
+from vgcm.robot_state import RobotState
 
 
 def load_onnx_model(onnx_path):
@@ -36,6 +37,10 @@ class Simulator:
         self.mujoco_model, self.mujoco_data = load_robot_model(xml_path)
         self.visualise = not headless
         self.onnx_sesh = load_onnx_model(onnx_model_path)
+        self.dt = self.mujoco_model.opt.timestep
+        self.fps = 1. / self.dt
+        self.steps = test_duration * self.fps
+        self.state = RobotState()
 
         if self.visualise:
             self.viewer = mujoco.viewer.launch_passive(
@@ -43,11 +48,7 @@ class Simulator:
             self.viewer.cam.distance = 10
             self.viewer.cam.elevation = -20
 
-        self.dt = self.mujoco_model.opt.timestep
-        self.fps = 1. / self.dt
-        self.rate = Rate(self.fps)
-
-        self.steps = test_duration * self.fps
+            self.viewer_update_frame = int(self.fps / 60.)
 
     def key_callback(self, keycode):
         pass
@@ -55,21 +56,46 @@ class Simulator:
     def run(self):
         print("Starting MuJoCo simulation...")
         if self.visualise:
+            rate = Rate(60.)
+            frame = 0
+            import time
+            start = time.time()
             while self.viewer.is_running():
-                state = self.read_state()
-                self.control(state)
+                self.read_state()
+                self.control()
                 mujoco.mj_step(self.mujoco_model, self.mujoco_data)
-                self.viewer.sync()
-                self.rate.sleep()
+                frame = (frame + 1) % self.viewer_update_frame
+                if frame == 0:
+                    now = time.time()
+                    start = now
+                    self.viewer.sync()
+                    rate.sleep()
         else:
             for _ in range(self.steps):
-                state = self.read_state()
-                self.control(state)
+                self.read_state()
+                self.control()
                 mujoco.mj_step(self.mujoco_model, self.mujoco_data)
         print("Simulation finished.")
 
     def read_state(self):
-        pass
+        for i in range(self.state.num_joints):
+            self.state.q[i] = self.mujoco_data.qpos[i + 6]
+            self.state.dq[i] = self.mujoco_data.qvel[i + 6]
+            self.state.tau[i] = self.mujoco_data.ctrl[i]
 
-    def control(self, state):
+        for i in range(self.state.num_compensators):
+            # TODO: Process GC states
+            pass
+        
+        imu_quat_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "quat")
+        imu_gyro_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "gyro")
+        imu_acc_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "acc")
+        for i in range(4):
+            self.state.imu_data_quat[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_quat_id] + i]
+        for i in range(3):
+            self.state.imu_data_gyro[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_gyro_id] + i]
+            self.state.imu_data_acc[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_acc_id] + i]
+        self.state.stamp = self.mujoco_data.time
+
+    def control(self):
         pass
