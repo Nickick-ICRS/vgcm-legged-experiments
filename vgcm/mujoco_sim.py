@@ -40,6 +40,9 @@ class Simulator:
 
         self.commands = np.array([1., 0, 0], dtype=np.float32)
 
+        self.base_id = self.mujoco_model.body(name="base_Link").id
+        self.base_mass = self.mujoco_model.body_mass[self.base_id]
+
         if self.visualise:
             self.viewer = mujoco.viewer.launch_passive(
                 self.mujoco_model, self.mujoco_data, key_callback=self.key_callback, show_left_ui=True, show_right_ui=True)
@@ -47,6 +50,10 @@ class Simulator:
             self.viewer.cam.elevation = -20
 
             self.viewer_update_frame = int(self.fps / 60.)
+
+        # Experimentally, 10 is the maximum extra payload the robot can maintain
+        self.set_payload(10)
+
 
     def key_callback(self, keycode):
         pass
@@ -88,17 +95,15 @@ class Simulator:
             # TODO: Process GC states
             pass
 
-        base_id = self.mujoco_model.body(name="base_Link").id
-
-        self.state.base_pos = self.mujoco_data.xpos[base_id]
+        self.state.base_pos = self.mujoco_data.xpos[self.base_id]
         # Mujoco stores the quat W X Y Z, we want X Y Z W
-        quat_wxyz = self.mujoco_data.xquat[base_id]
+        quat_wxyz = self.mujoco_data.xquat[self.base_id]
         self.state.base_quat[:3] = quat_wxyz[1:]
         self.state.base_quat[3] = quat_wxyz[0]
-        base_mat = self.mujoco_data.xmat[base_id].reshape(3, 3)
+        base_mat = self.mujoco_data.xmat[self.base_id].reshape(3, 3)
         # In global frame -> convert to local
-        self.state.base_lin_vel = base_mat.transpose() @ self.mujoco_data.cvel[base_id][3:]
-        self.state.base_ang_vel = base_mat.transpose() @ self.mujoco_data.cvel[base_id][:3]
+        self.state.base_lin_vel = base_mat.transpose() @ self.mujoco_data.cvel[self.base_id][3:]
+        self.state.base_ang_vel = base_mat.transpose() @ self.mujoco_data.cvel[self.base_id][:3]
         self.state.projected_gravity = base_mat.transpose() @ self.mujoco_model.opt.gravity
         
         imu_quat_id = mujoco.mj_name2id(self.mujoco_model, mujoco.mjtObj.mjOBJ_SENSOR, "quat")
@@ -113,9 +118,16 @@ class Simulator:
             self.state.imu_data_acc[i] = self.mujoco_data.sensordata[self.mujoco_model.sensor_adr[imu_acc_id] + i]
 
         self.state.stamp = self.mujoco_data.time
-        print(self.state)
 
     def control(self):
         control = self.controller.control(self.state, self.commands)
         for i in range(self.state.num_joints):
             self.mujoco_data.ctrl[i] = control.tau[i]
+
+    def set_payload(self, mass):
+        old_mass = self.mujoco_model.body_mass[self.base_id] - self.base_mass
+        print(f"Updating robot mass from {self.base_mass} + {old_mass} to {self.base_mass} + {mass}.")
+        self.mujoco_model.body_mass[self.base_id] = self.base_mass + mass
+
+        # Update subtree masses etc
+        mujoco.mj_setConst(self.mujoco_model, self.mujoco_data)
