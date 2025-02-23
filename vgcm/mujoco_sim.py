@@ -30,7 +30,7 @@ def load_robot_model(xml_path, n_robots=1):
 
 
 class Simulator:
-    def __init__(self, xml_path, controllers: List[Controller], test_duration=20, headless=False):
+    def __init__(self, xml_path, controllers: List[Controller], test_duration=20, headless=False, callback=None):
         self.num_robots = len(controllers)
         self.mujoco_models, self.mujoco_data_instances = load_robot_model(xml_path, self.num_robots)
         self.visualise = not headless
@@ -39,6 +39,8 @@ class Simulator:
         self.fps = 1. / self.dt
         self.steps = int(test_duration * self.fps)
         self.states = [RobotState() for _ in range(self.num_robots)]
+
+        self.callback=callback
 
         self.commands = [np.array([1., 0, 0], dtype=np.float32) for _ in range(self.num_robots)]
 
@@ -52,11 +54,6 @@ class Simulator:
             self.viewer.cam.elevation = -20
 
             self.viewer_update_frame = int(self.fps / 60.)
-
-        # Experimentally, 10 is the maximum extra payload the robot can maintain
-        for i in range(self.num_robots):
-            self.set_payload(i, i % 10)
-
 
     def key_callback(self, keycode):
         pass
@@ -84,9 +81,14 @@ class Simulator:
                 self.step()
         print("Simulation finished.")
 
+    def run_custom_callback(self):
+        if self.callback is not None:
+            self.callback(self)
+
     def step(self):
         for i, data in enumerate(self.mujoco_data_instances):
             self.read_state(i, data)
+            self.run_custom_callback()
             self.control(i)
             mujoco.mj_step(self.mujoco_models[i], data)
 
@@ -135,4 +137,4 @@ class Simulator:
         self.mujoco_models[robot_idx].body_mass[self.base_id] = self.base_mass + mass
 
         # Update subtree masses etc
-        mujoco.mj_setConst(self.mujoco_models[robot_idx], self.mujoco_data_instances[robot_idx])
+        #mujoco.mj_setConst(self.mujoco_models[robot_idx], self.mujoco_data_instances[robot_idx])
