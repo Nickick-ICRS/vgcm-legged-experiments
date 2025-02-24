@@ -10,6 +10,7 @@ import numpy as np
 from vgcm.simple_rate import Rate
 from vgcm.robot_state import RobotState
 from vgcm.onnx_controller import Controller
+from vgcm.vgcm_ideal_model import VGCMTorsionSpringModel
 
 
 def prepare_mujoco_xml(model_xml, xml_path):
@@ -30,11 +31,15 @@ def load_robot_model(xml_path, n_robots=1):
 
 
 class Simulator:
-    def __init__(self, xml_path, controllers: List[Controller], test_duration=20, headless=False, callback=None):
+    def __init__(
+            self, xml_path, controllers: List[Controller], compensators: List[VGCMTorsionSpringModel],
+            test_duration=20, headless=False, callback=None):
+
         self.num_robots = len(controllers)
         self.mujoco_models, self.mujoco_data_instances = load_robot_model(xml_path, self.num_robots)
         self.visualise = not headless
         self.controllers = controllers
+        self.compensators = compensators
         self.dt = self.mujoco_models[0].opt.timestep
         self.fps = 1. / self.dt
         self.steps = int(test_duration * self.fps)
@@ -43,6 +48,7 @@ class Simulator:
         self.callback=callback
 
         self.commands = [np.array([1., 0, 0], dtype=np.float32) for _ in range(self.num_robots)]
+        self.ext_forces = [np.zeros(3, dtype=np.float32) for _ in range(self.num_robots)]
 
         self.base_id = self.mujoco_models[0].body(name="base_Link").id
         self.base_mass = self.mujoco_models[0].body_mass[self.base_id]
@@ -54,6 +60,18 @@ class Simulator:
             self.viewer.cam.elevation = -20
 
             self.viewer_update_frame = int(self.fps / 60.)
+
+    def get_full_state_dict(self, robot_idx):
+        entry = self.states[robot_idx].to_dict()
+        entry["cmd_x"] = self.commands[robot_idx][0]
+        entry["cmd_y"] = self.commands[robot_idx][1]
+        entry["cmd_yaw"] = self.commands[robot_idx][2]
+        entry["ext_f_x"] = self.ext_forces[robot_idx][0]
+        entry["ext_f_y"] = self.ext_forces[robot_idx][1]
+        entry["ext_f_z"] = self.ext_forces[robot_idx][2]
+        for i, act in enumerate(self.controllers[robot_idx]._prev_actions):
+            entry[f"action{i}"] = act
+        return entry
 
     def key_callback(self, keycode):
         pass
@@ -88,8 +106,10 @@ class Simulator:
     def step(self):
         for i, data in enumerate(self.mujoco_data_instances):
             self.read_state(i, data)
-            self.run_custom_callback()
+        self.run_custom_callback()
+        for i, data in enumerate(self.mujoco_data_instances):
             self.control(i)
+            self.apply_forces(i)
             mujoco.mj_step(self.mujoco_models[i], data)
 
     def read_state(self, robot_idx, mujoco_data):
@@ -132,9 +152,16 @@ class Simulator:
         for i in range(self.states[robot_idx].num_joints):
             self.mujoco_data_instances[robot_idx].ctrl[i] = control.tau[i]
 
+    def apply_forces(self, robot_idx):
+        # Gravity compensators
+        if self.compensators[robot_idx] is not None:
+            for i, comp in enumerate(self.compensators[robot_idx]):
+                q = self.states[robot_idx].q[i]
+                self.mujoco_data_instances[robot_idx].ctrl[i] += comp.update(q, k_ideal, zero_ideal, dt)
+        # External forces
+        self.mujoco_data_instances[robot_idx].xfrc_applied[self.base_id, :3] = self.ext_forces[robot_idx]
+
     def set_payload(self, robot_idx, mass):
         print(f"Setting robot {robot_idx} payload to {mass}.")
-        self.mujoco_models[robot_idx].body_mass[self.base_id] = self.base_mass + mass
-
-        # Update subtree masses etc
-        #mujoco.mj_setConst(self.mujoco_models[robot_idx], self.mujoco_data_instances[robot_idx])
+        g = self.mujoco_models[robot_idx].opt.gravity
+        self.ext_forces[robot_idx] = g * mass

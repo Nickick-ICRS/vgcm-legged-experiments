@@ -7,55 +7,64 @@ from vgcm.onnx_controller import Controller
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-import copy
+import pandas as pd
 
 
 class ResultAggregator:
     def __init__(self, n_robots, test_duration):
         self.n_robots = n_robots
-        self.command_history = [[] for _ in range(self.n_robots)]
-        self.state_history = [[] for _ in range(self.n_robots)]
-        self.action_history = [[] for _ in range(self.n_robots)]
+        self.pandas_dicts = [None for _ in range(self.n_robots)]
         self.test_duration = test_duration
         self.done = False
-        self.skip_first_secs = 1.
+        self.skip_first_secs = 0.
         self.prev_t = 0
+        self.step = 0
 
     def aggregate(self, sim):
         if self.done:
             return self.done
         t = sim.states[0].stamp
-        if t < self.skip_first_secs:
-            return self.done
         for i in range(self.n_robots):
-            # self.state_history[i].append(copy.deepcopy(sim.states[i]))
-            # self.command_history[i].append(copy.deepcopy(sim.commands[i]))
-            # self.action_history[i].append(copy.deepcopy(sim.controllers[i]._last_ctrl.tau))
-            if self.prev_t < 4. and t >= 4.:
+            data = sim.get_full_state_dict(i)
+            if self.pandas_dicts[i] is None:
+                self.pandas_dicts[i] = pd.DataFrame(np.nan, index=np.arange(sim.steps), columns=data.keys())        
+            self.pandas_dicts[i].loc[self.step] = data
+
+            if self.prev_t < 6. and t >= 6.:
                 sim.set_payload(i, i % 10)
-            if self.prev_t < 8. and t >= 8.:
+            if self.prev_t < 14. and t >= 14.:
                 sim.set_payload(i, 0)
+
         if t >= self.test_duration + self.skip_first_secs:
+            self.save_data()
             self.process_results()
             self.done = True
+
         self.prev_t = t
+        self.step += 1
+        if self.step % 1000 == 0:
+            print(f"Step {self.step} / {sim.steps} ({t})")
         return self.done
+    
+    def save_data(self):
+        filepath = os.path.join(LEGGED_GYM_ROOT_DIR, "vgcm/experiment_results")
+        for i, df in enumerate(self.pandas_dicts):
+            path = os.path.join(filepath, f"raw_data_{i}.csv")
+            print(f"Saving experiment {i} to {path}")
+            df.dropna()
+            df.to_csv(path, index=False)
 
     def process_results(self):
         print("Processing Experiment Results")
-        history = len(self.state_history[0])
+        history = len(self.pandas_dicts[0])
         fig, ax = plt.subplots()
         fig2, ax2 = plt.subplots()
         start = self.skip_first_secs
         end = self.skip_first_secs + self.test_duration
-        timesteps = np.linspace(start, end, history)
-        for idx in range(self.n_robots):
-            avg_torque = np.zeros(history)
-            max_torque = np.zeros(history)
-            for t in range(history):
-                avg_torque[t] = np.mean(np.abs(self.state_history[idx][t].tau))
-                max_torque[t] = np.max(np.abs(self.state_history[idx][t].tau))
+        timesteps = self.pandas_dicts[0]["step"]
+        for idx, df in enumerate(self.pandas_dicts):
+            avg_torque = df[[f"tau{i}" for i in range(8)]].abs().mean(axis=1)
+            max_torque = df[[f"tau{i}" for i in range(8)]].max(axis=1)
             ax.plot(timesteps, avg_torque, label=f"{idx} kg Payload")
             ax2.plot(timesteps, max_torque, label=f"{idx} kg Payload")
         ax.set_xlabel("Timestep (s)")
@@ -78,11 +87,14 @@ def main(args):
             controllers.append(Controller(onnx_model_path))
     controllers = [Controller(onnx_model_path) for _ in range(10)]
     experiment = ResultAggregator(len(controllers), args.test_duration)
+    compensators = [None for _ in controllers]
     sim = Simulator(
-        args.xml_path, controllers, test_duration=args.test_duration+experiment.skip_first_secs,
+        args.xml_path, controllers, compensators,
+        test_duration=args.test_duration+experiment.skip_first_secs,
         headless=args.headless, callback=experiment.aggregate)
     sim.run()
     if not experiment.done:
+        experiment.save_data()
         experiment.process_results()
 
 

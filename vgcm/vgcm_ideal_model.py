@@ -55,3 +55,31 @@ class VGCMIdealModel(torch.nn.Module):
         m = (req_torque_2 - req_torque_0) / (2 * dx)
         c = req_torque_1
         return m * (positions - target_positions) + c
+
+class VGCMTorsionSpringModel:
+    def __init__(self, k_min: float, k_max: float, k_rate: float, preload_rate: float):
+        self.k_min = k_min
+        self.k_max = k_max
+        self.k_rate = k_rate
+        self.preload_rate = preload_rate
+
+        self.preload = 0
+        self.k = k_min
+
+    def update(self, position, target_k, target_preload, dt):
+        self.preload = self.update_param(self.preload, target_preload, self.preload_rate, dt)
+        self.k = self.update_param(self.k, target_k, self.k_rate, dt)
+
+        dx = position - self.preload
+        f = self.k * dx
+        return f
+
+    def update_param(self, current, target, rate, dt):
+        if current == target:
+            return current
+        delta = target - current
+        max_delta = rate * dt
+        if abs(delta) < abs(max_delta):
+            return target
+        delta = max_delta if delta > 0 else -max_delta
+        return current + delta

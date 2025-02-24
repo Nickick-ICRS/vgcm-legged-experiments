@@ -22,15 +22,44 @@ class RobotState:
         if self.has_gravity_compensators:
             # Don't compensate wheels
             self.num_compensators = num_joints-2
-            # TODO: Check what these parameters need to be
-            self.gc_a = np.zeros(self.num_compensators)
-            self.gc_b = np.zeros(self.num_compensators)
-            # Set Point
-            self.gc_sp = np.zeros(self.num_compensators)
-            # Current Position
-            self.gc_cp = np.zeros(self.num_compensators)
+            # Spring constant
+            self.gc_k = np.zeros(self.num_compensators)
+            # Zero position
+            self.gc_x = np.zeros(self.num_compensators)
+            # Target spring constant 
+            self.gc_tk = np.zeros(self.num_compensators)
+            # Target zero position
+            self.gc_tx = np.zeros(self.num_compensators)
         else:
             self.num_compensators = 0
+
+    def to_dict(self):
+        entry = {
+            "step": self.stamp,
+            **{"q"+str(i): q for i, q in enumerate(self.q)},
+            **{"dq"+str(i): dq for i, dq in enumerate(self.dq)},
+            **{"tau"+str(i): tau for i, tau in enumerate(self.tau)},
+            "base_pos_x": self.base_pos[0],
+            "base_pos_y": self.base_pos[1],
+            "base_pos_z": self.base_pos[2],
+            "base_quat_x": self.base_quat[0],
+            "base_quat_y": self.base_quat[1],
+            "base_quat_z": self.base_quat[2],
+            "base_quat_w": self.base_quat[3],
+            "base_lin_vel_x": self.base_lin_vel[0],
+            "base_lin_vel_y": self.base_lin_vel[1],
+            "base_lin_vel_z": self.base_lin_vel[2],
+            "base_ang_vel_x": self.base_ang_vel[0],
+            "base_ang_vel_y": self.base_ang_vel[1],
+            "base_ang_vel_z": self.base_ang_vel[2],
+        }
+        if self.has_gravity_compensators:
+            for i in range(self.num_compensators):
+                entry[f"gc{i}_stiffness"] = self.gc_k[i]
+                entry[f"gc{i}_zero_pos"] = self.gc_x[i]
+                entry[f"gc{i}_target_stiffness"] = self.gc_tk[i]
+                entry[f"gc{i}_target_zero_pos"] = self.gc_tx[i]
+        return entry
 
     def __str__(self):
         state_str = f"RobotState (stamp={self.stamp}, num_joints={self.num_joints}):\n"

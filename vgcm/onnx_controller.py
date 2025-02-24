@@ -28,6 +28,7 @@ class Controller:
     def __init__(self, onnx_path):
         self.session = load_onnx_model(onnx_path)
         self._prev_actions = np.zeros(8, dtype=np.float32)
+        self._prev_actions_scaled = np.zeros(8, dtype=np.float32)
         self._last_ctrl = ControlSignal(np.zeros(8, dtype=np.float32))
         self._Kps = np.ones(8, dtype=np.float32) * 40.
         self._Kds = np.array([1.8, 1.8, 1.8, 0.5, 1.8, 1.8, 1.8, 0.5], dtype=np.float32)
@@ -51,10 +52,13 @@ class Controller:
         inputs = {self.session.get_inputs()[0].name: state_input}
         outputs = self.session.run(None, inputs)[0]
         self._prev_actions = outputs
-        # Wheels command v, others command x
-        taus = self._Kps * (self._scale_pos * outputs + self._default_dof_pos - robot_state.q) - self._Kps * robot_state.dq
         WHEELS = [3, 7]
-        taus[WHEELS] = self._Kds[WHEELS] * (self._scale_vel * outputs[WHEELS] - robot_state.dq[WHEELS])
+        actions_scaled = self._scale_pos * outputs + self._default_dof_pos
+        actions_scaled[WHEELS] = self._scale_vel * outputs[WHEELS]
+        self._prev_actions_scaled = actions_scaled
+        # Wheels command v, others command x
+        taus = self._Kps * (actions_scaled - robot_state.q) - self._Kps * robot_state.dq
+        taus[WHEELS] = self._Kds[WHEELS] * (actions_scaled[WHEELS] - robot_state.dq[WHEELS])
         taus = np.clip(taus, -self._torque_lims, self._torque_lims)
 
         ctrl = ControlSignal(taus, self._last_ctrl.controls_compensators)
