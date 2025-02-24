@@ -8,6 +8,7 @@ import torch
 from scipy.spatial.transform import Rotation
 
 
+np.set_printoptions(formatter={'float': lambda x: f"{x:0.2f}"})
 colours = [
     '#4466aa', '#66ccee', '#228833', '#ccbb44', '#ee6677', '#aa3377', '#bbbbbb'
 ]
@@ -61,7 +62,7 @@ def make_update(n_frames, axis):
         line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m20, gr, ext_f))
         line_30kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m30, gr, ext_f))
         ax.set_title(f"Moment Induced by Gravity for a Revolute Joint with Unit Length Arm\n"
-                     f"With Relative Gravity {gr[0]}")
+                     f"With Relative Gravity {np.array([gr[0, 0], gr[0, 1], gr[0, 2]])}")
         ax.legend()
         return [line_10kg, line_20kg, line_30kg]
     return update
@@ -82,7 +83,7 @@ ax.legend()
 
 line_20kg, = ax.plot(theta, force_10kg, label="Required Force")
 linear_20kg, = ax.plot(theta, force_10kg, label="Compensation")
-dot, = ax.plot(0, 0, 'ro', label="Linearisaion Point")
+dot, = ax.plot(0, 0, 'ro', label="Linearisation Point")
 
 def make_update(n_frames, axis):
     def update(frame):

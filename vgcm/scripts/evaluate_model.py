@@ -49,7 +49,7 @@ class ResultAggregator:
     def save_data(self):
         filepath = os.path.join(LEGGED_GYM_ROOT_DIR, "vgcm/experiment_results")
         for i, df in enumerate(self.pandas_dicts):
-            path = os.path.join(filepath, f"raw_data_{i}.csv")
+            path = os.path.join(filepath, f"raw_data_{i}_kg.csv")
             print(f"Saving experiment {i} to {path}")
             df.dropna()
             df.to_csv(path, index=False)
