@@ -5,83 +5,15 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 from vgcm.mujoco_sim import Simulator
 from vgcm.onnx_controller import Controller
 
-from vgcm.experiments import BasicLinearExperiment, LissajousExperiment
+from vgcm.experiments.linear_experiments import BasicLinearExperiment, WeightChangeLinearExperiment
+from vgcm.experiments.lissajous_experiments import LissajousExperiment
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 
-class ResultAggregator:
-    def __init__(self, n_robots, test_duration):
-        self.n_robots = n_robots
-        self.pandas_dicts = [None for _ in range(self.n_robots)]
-        self.test_duration = test_duration
-        self.done = False
-        self.skip_first_secs = 0.
-        self.prev_t = 0
-        self.step = 0
-
-    def aggregate(self, sim):
-        if self.done:
-            return self.done
-        t = sim.states[0].stamp
-        for i in range(self.n_robots):
-            data = sim.get_full_state_dict(i)
-            if self.pandas_dicts[i] is None:
-                self.pandas_dicts[i] = pd.DataFrame(np.nan, index=np.arange(sim.steps), columns=data.keys())        
-            self.pandas_dicts[i].loc[self.step] = data
-
-            if self.prev_t < 6. and t >= 6.:
-                sim.set_payload(i, i % 10)
-            if self.prev_t < 14. and t >= 14.:
-                sim.set_payload(i, 0)
-
-        if t >= self.test_duration + self.skip_first_secs:
-            self.save_data()
-            self.process_results()
-            self.done = True
-
-        self.prev_t = t
-        self.step += 1
-        if self.step % 1000 == 0:
-            print(f"Step {self.step} / {sim.steps} ({t})")
-        return self.done
-    
-    def save_data(self):
-        filepath = os.path.join(LEGGED_GYM_ROOT_DIR, "vgcm/experiment_results")
-        for i, df in enumerate(self.pandas_dicts):
-            path = os.path.join(filepath, f"raw_data_{i}_kg.csv")
-            print(f"Saving experiment {i} to {path}")
-            df.dropna()
-            df.to_csv(path, index=False)
-
-    def process_results(self):
-        print("Processing Experiment Results")
-        history = len(self.pandas_dicts[0])
-        fig, ax = plt.subplots()
-        fig2, ax2 = plt.subplots()
-        start = self.skip_first_secs
-        end = self.skip_first_secs + self.test_duration
-        timesteps = self.pandas_dicts[0]["step"]
-        for idx, df in enumerate(self.pandas_dicts):
-            avg_torque = df[[f"tau{i}" for i in range(8)]].abs().mean(axis=1)
-            max_torque = df[[f"tau{i}" for i in range(8)]].max(axis=1)
-            ax.plot(timesteps, avg_torque, label=f"{idx} kg Payload")
-            ax2.plot(timesteps, max_torque, label=f"{idx} kg Payload")
-        ax.set_xlabel("Timestep (s)")
-        ax2.set_xlabel("Timestep (s)")
-        ax.set_ylabel("Average Absolute Torque (Nm)")
-        ax2.set_ylabel("Peak Absolute Torque (Nm)")
-        ax.set_title("Average Torque for Varying Payloads")
-        ax2.set_title("Peak Torque for Varying Payloads")
-        ax.legend()
-        ax2.legend()
-        print("Done")
-        plt.show()
-
-
-EXPERIMENT_CHOICES = ['basic_linear', 'lissajous']
+EXPERIMENT_CHOICES = ['basic_linear', 'weights_linear', 'lissajous']
 
 
 def main(args):
@@ -96,6 +28,8 @@ def main(args):
         headless=args.headless)
     if args.experiment == 'basic_linear':
         experiment = BasicLinearExperiment(sim)
+    elif args.experiment == 'weights_linear':
+        experiment = WeightChangeLinearExperiment(sim)
     elif args.experiment == 'lissajous':
         experiment = LissajousExperiment(sim)
     sim.run()
