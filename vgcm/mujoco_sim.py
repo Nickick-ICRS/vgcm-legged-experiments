@@ -42,12 +42,12 @@ class Simulator:
         self.compensators = compensators
         self.dt = self.mujoco_models[0].opt.timestep
         self.fps = 1. / self.dt
-        self.steps = int(test_duration * self.fps)
+        self.set_test_duration(test_duration)
         self.states = [RobotState() for _ in range(self.num_robots)]
 
         self.callback=callback
 
-        self.commands = [np.array([1., 0, 0], dtype=np.float32) for _ in range(self.num_robots)]
+        self.commands = [np.zeros(3, dtype=np.float32) for _ in range(self.num_robots)]
         self.ext_forces = [np.zeros(3, dtype=np.float32) for _ in range(self.num_robots)]
 
         self.base_id = self.mujoco_models[0].body(name="base_Link").id
@@ -60,6 +60,7 @@ class Simulator:
             self.viewer.cam.elevation = -20
 
             self.viewer_update_frame = int(self.fps / 60.)
+        self.done = False
 
     def get_full_state_dict(self, robot_idx):
         entry = self.states[robot_idx].to_dict()
@@ -72,6 +73,18 @@ class Simulator:
         for i, act in enumerate(self.controllers[robot_idx]._prev_actions):
             entry[f"action{i}"] = act
         return entry
+
+    def set_test_duration(self, duration):
+        self.steps = int(duration * self.fps)
+    
+    def set_command(self, idx, command):
+        self.commands[idx] = command
+    
+    def register_callback(self, callback):
+        self.callback = callback
+
+    def signal_shutdown(self):
+        self.done = True
 
     def key_callback(self, keycode):
         pass
@@ -86,7 +99,7 @@ class Simulator:
             frame = 0
             import time
             start = time.time()
-            while self.viewer.is_running():
+            while self.viewer.is_running() and not self.done:
                 self.step()
                 frame = (frame + 1) % self.viewer_update_frame
                 if frame == 0:
@@ -95,13 +108,16 @@ class Simulator:
                     self.viewer.sync()
                     rate.sleep()
         else:
-            for _ in range(self.steps):
+            # We did one initial step already
+            for _ in range(self.steps+1):
                 self.step()
+                if self.done:
+                    break
         print("Simulation finished.")
 
     def run_custom_callback(self):
         if self.callback is not None:
-            self.callback(self)
+            self.callback()
 
     def step(self):
         for i, data in enumerate(self.mujoco_data_instances):

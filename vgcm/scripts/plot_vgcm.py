@@ -1,4 +1,5 @@
 from vgcm.vgcm_ideal_model import VGCMIdealModel, VGCMParameters
+from vgcm.colours import colours
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -9,9 +10,6 @@ from scipy.spatial.transform import Rotation
 
 
 np.set_printoptions(formatter={'float': lambda x: f"{x:0.2f}"})
-colours = [
-    '#4466aa', '#66ccee', '#228833', '#ccbb44', '#ee6677', '#aa3377', '#bbbbbb'
-]
 plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 

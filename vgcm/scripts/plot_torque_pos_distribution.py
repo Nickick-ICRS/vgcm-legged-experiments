@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from cycler import cycler
+from vgcm.colours import colours
+plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
+
 
 results_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'vgcm/experiment_results')
 filepath = os.path.join(results_dir, 'raw_data_0_kg.csv')

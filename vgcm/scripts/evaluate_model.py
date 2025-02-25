@@ -5,6 +5,8 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 from vgcm.mujoco_sim import Simulator
 from vgcm.onnx_controller import Controller
 
+from vgcm.experiments import BasicLinearExperiment, LissajousExperiment
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -79,23 +81,24 @@ class ResultAggregator:
         plt.show()
 
 
+EXPERIMENT_CHOICES = ['basic_linear', 'lissajous']
+
+
 def main(args):
     controllers = []
     for model_file in os.listdir(args.onnx_dir):
-        if model_file.endswith(".onnx"):
+        if model_file.endswith(".onnx") and args.ctrl_name in model_file:
             onnx_model_path = os.path.join(args.onnx_dir, model_file)
             controllers.append(Controller(onnx_model_path))
-    controllers = [Controller(onnx_model_path) for _ in range(10)]
-    experiment = ResultAggregator(len(controllers), args.test_duration)
     compensators = [None for _ in controllers]
     sim = Simulator(
         args.xml_path, controllers, compensators,
-        test_duration=args.test_duration+experiment.skip_first_secs,
-        headless=args.headless, callback=experiment.aggregate)
+        headless=args.headless)
+    if args.experiment == 'basic_linear':
+        experiment = BasicLinearExperiment(sim)
+    elif args.experiment == 'lissajous':
+        experiment = LissajousExperiment(sim)
     sim.run()
-    if not experiment.done:
-        experiment.save_data()
-        experiment.process_results()
 
 
 def parse_args():
@@ -106,8 +109,9 @@ def parse_args():
 
     parser.add_argument("--onnx_dir", type=str, default=default_onnx_dir, help=f"Path to directory containing ONNX models (default: {default_onnx_dir})")
     parser.add_argument("--xml_path", type=str, default=default_xml_path, help=f"Path to robot MJCF model (default: {default_xml_path})")
-    parser.add_argument("--test_duration", type=float, default=20, help="Simulation duration in seconds (default: 20)")
+    parser.add_argument("--ctrl_name", type=str, default="", help="Only onnx files with <ctrl_name> in their name will be used")
     parser.add_argument("--headless", action='store_true', help="Run without visualiser")
+    parser.add_argument("--experiment", type=str, choices=EXPERIMENT_CHOICES, required=True, help=f"Choose the experiment from {EXPERIMENT_CHOICES}")
     args = parser.parse_args()
     return args
 
