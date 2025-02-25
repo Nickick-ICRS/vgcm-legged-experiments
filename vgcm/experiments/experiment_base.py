@@ -46,7 +46,7 @@ class ExperimentBase(ABC):
         return False
     
     def save_results(self):
-        """Save state history to a JSON file."""
+        """Save state history to a CSV file."""
         filepath = os.path.join(LEGGED_GYM_ROOT_DIR, "vgcm/experiment_results")
         for i, df in enumerate(self.state_histories):
             filename = self.get_filename(i)
@@ -79,4 +79,4 @@ class ExperimentBase(ABC):
         pass
 
     def get_filename(self, idx) -> str:
-        return f"{self.experiment_name()}_results_{idx}.json"
+        return f"{self.experiment_name()}_results_{idx}.csv"
