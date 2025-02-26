@@ -54,7 +54,7 @@ class VGCMIdealModel(torch.nn.Module):
             grad_positions[:, 2].unsqueeze(-1), mass, gravity, ext_force)
         m = (req_torque_2 - req_torque_0) / (2 * dx)
         c = req_torque_1
-        return m * (positions - target_positions) + c
+        return m * (positions - target_positions) + c, m, c
 
 class VGCMTorsionSpringModel:
     def __init__(self, k_min: float, k_max: float, k_rate: float, preload_rate: float):

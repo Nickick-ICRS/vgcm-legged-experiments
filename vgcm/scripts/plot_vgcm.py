@@ -92,7 +92,8 @@ def make_update(n_frames, axis):
         target_thetas = torch.tensor([0.8 + 0.2 * np.sin(4*np.pi*frame / n_frames) for i in range(theta.shape[0])], dtype=torch.float32).unsqueeze(-1)
 
         line_20kg.set_ydata(model.calculate_expected_torque_to_compensate(theta, m20, gr, ext_f))
-        linear_20kg.set_ydata(model.calculate_linear_model(theta, target_thetas, m20, gr, ext_f))
+        torques, m, c = model.calculate_linear_model(theta, target_thetas, m20, gr, ext_f)
+        linear_20kg.set_ydata(torques)
         dot.set_xdata([target_thetas[0]])
         target_forces = model.calculate_expected_torque_to_compensate(target_thetas, m20, gr, ext_f)
         dot.set_ydata([target_forces[0]])
