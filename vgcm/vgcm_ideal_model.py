@@ -73,11 +73,10 @@ class VGCMSpringModel:
 
         # This is actually the preload position not the preload force
         self.preload = (x_min + x_max) / 2
-        self.k = (k_min + k_max) / 2
+        self.k = k_min
 
         self.tk = self.k
         self.tx = self.preload
-        self.EPSILON = 1e-2
 
     def update(self, position, target_k, target_preload, dt):
         self.preload = self.update_params(
@@ -99,30 +98,6 @@ class VGCMSpringModel:
             return target
         delta = max_delta if delta > 0 else -max_delta
         return current + delta
-
-    def calc_k_x(self, r0, axis, tau, gdir, theta):
-        # Estimate gravity force that would result in tau
-        rxd = np.cross(r0, gdir)
-        rxddk = np.dot(rxd, axis)
-        f = (tau / rxddk) * gdir
-
-        def get_tau(theta):
-            c = np.cos(theta)
-            s = np.sin(theta)
-            r = c * r0 + s * np.cross(axis, r0) + (1-c) * np.dot(axis, r0) * axis
-            return np.dot(np.cross(r, f), axis)
-
-        delta = 0.01
-        t0 = get_tau(-delta)
-        t1 = get_tau(delta)
-        k = np.clip(np.abs((t1 - t0) / (2 * delta)), self.k_min, self.k_max)
-        k = np.abs(t1 - t0) / (2 * delta)
-        sign = 1 if t1 > t0 else -1
-        self.sign = sign
-        dx = sign * tau / k
-        x = np.clip(theta - dx, self.x_min, self.x_max)
-
-        return k, x
 
 
 COMPENSATION_OPTIONS = ['none', 'low', 'medium', 'high']

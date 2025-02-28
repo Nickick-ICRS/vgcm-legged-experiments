@@ -24,9 +24,16 @@ def load_robot_model(xml_path, n_robots=1):
     with open(xml_path) as model_file:
         model_xml = prepare_mujoco_xml(model_file.read(), xml_path)
     models = [mujoco.MjModel.from_xml_string(model_xml) for _ in range(n_robots)]
+
+    # Read in control limits and disable - we handle manually
+    min_tau = models[0].actuator_ctrlrange[:, 0]
+    max_tau = models[0].actuator_ctrlrange[:, 1]
+    for model in models:
+        model.actuator_ctrllimited[:] = 0
+
     data = [mujoco.MjData(models[i]) for i in range(n_robots)]
     print(f"{n_robots} robot models loaded successfully.")
-    return models, data
+    return models, data, min_tau, max_tau
 
 
 class Simulator:
@@ -35,7 +42,7 @@ class Simulator:
             test_duration=20, headless=False, callback=None):
 
         self.num_robots = len(controllers)
-        self.mujoco_models, self.mujoco_data_instances = load_robot_model(xml_path, self.num_robots)
+        self.mujoco_models, self.mujoco_data_instances, self.min_tau, self.max_tau = load_robot_model(xml_path, self.num_robots)
         self.visualise = not headless
         self.controllers = controllers
         self.compensators = compensators
@@ -108,6 +115,13 @@ class Simulator:
         # Step once to fill state etc.
         for robot_idx, data in enumerate(self.mujoco_data_instances):
             mujoco.mj_step(self.mujoco_models[robot_idx], data)
+            # Set gravity compensators to current position
+            idxs = [0, 1, 2, 4, 5, 6]
+            for i, comp in enumerate(self.compensators[robot_idx]):
+                x = data.qpos[7+idxs[i]]
+                comp.preload = x
+                comp.tx = x
+
         if self.visualise:
             rate = Rate(60.)
             frame = 0
@@ -213,12 +227,15 @@ class Simulator:
 
         for i, (idx, comp) in enumerate(zip(idxs, self.compensators[robot_idx])):
             if comp is None:
-                continue
-
-            g_comp = comp.update(q[i], stiffness[i], zero_pos[i], self.dt)
+                g_comp = 0
+            else:
+                g_comp = comp.update(q[i], stiffness[i], zero_pos[i], self.dt)
             self.compensation_tau[robot_idx][i] = g_comp
-            # Don't add compensation, we just apply "less" actuator torque
-            #  self.mujoco_data_instances[robot_idx].ctrl[idx] += g_comp
+            # Ensure actuator torque doesn't exceed limits
+            act_tau = np.clip(
+                self.mujoco_data_instances[robot_idx].ctrl[idx] - g_comp,
+                self.min_tau[idx], self.max_tau[idx])
+            self.mujoco_data_instances[robot_idx].ctrl[idx] = act_tau + g_comp
             n = self.tau_ma_n
             self.tau_mas[robot_idx][idx] = self.tau_mas[robot_idx][idx] * (n-1) / n \
                 + self.mujoco_data_instances[robot_idx].ctrl[idx] / n
