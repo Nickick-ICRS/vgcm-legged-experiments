@@ -60,21 +60,25 @@ class LissajousExperiment(ExperimentBase):
         for i, (idx, name) in enumerate(zip(joint_idxs, joint_names)):
             tau_raw = df[f"tau{idx}"]
             tau_ma = df[f"tau{idx}"].rolling(window=5000).mean()
-            q = df[f"q{i}"]
-            gc = df[f"gc{i}_tau"]
-            actuator_tau = tau_raw - gc
+            q = df[f"q{idx}"]
             ax_t = axes[i]
             ax_p = ax_t.twinx()
             line_raw, = ax_t.plot(timesteps, tau_raw, label=f'Torque', color=colours[0])
             line_ma, = ax_t.plot(timesteps, tau_ma, label=f'Torque (5s MA)', color=colours[1])
-            line_gc, = ax_t.plot(timesteps, gc, label=f'Compensation', color=colours[2])
-            line_act, = ax_t.plot(timesteps, actuator_tau, label=f'Required Actuator Torque', color=colours[3])
+            if self.compensation_type != 'none':
+                gc = df[f"gc{i}_tau"]
+                actuator_tau = tau_raw - gc
+                line_gc, = ax_t.plot(timesteps, gc, label=f'Compensation', color=colours[2])
+                line_act, = ax_t.plot(timesteps, actuator_tau, label=f'Required Actuator Torque', color=colours[3])
             line_pos, = ax_p.plot(timesteps, q, label=f'Joint Position', color=colours[4])
             ax_t.set_ylabel("Torque (Nm)")
             ax_p.set_ylabel("Position (rad)")
             ax_t.set_title(f"{name}")
             ax_t.set_xlabel('Time (s)')
-            lines = [line_raw, line_ma, line_gc, line_act, line_pos]
+            if self.compensation_type != 'none':
+                lines = [line_raw, line_ma, line_gc, line_act, line_pos]
+            else:
+                lines = [line_raw, line_ma, line_pos]
             labels = [l.get_label() for l in lines]
             ax_t.legend(lines, labels, loc="best")
 

@@ -13,7 +13,9 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 
 results_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'vgcm/experiment_results')
-filepath = os.path.join(results_dir, 'raw_data_0_kg.csv')
+filepath = os.path.join(results_dir, 'basic_linear_experiment_results_0.csv')
+filepath = os.path.join(results_dir, 'lissajous_trajectory_experiment_results_0.csv')
+
 
 df = pd.read_csv(filepath)
 

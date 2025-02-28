@@ -37,11 +37,12 @@ ax.set_xlabel("Arm Angle (rads)")
 ax.set_ylabel("Joint Torque (Nm)")
 ax.set_title("Moment Induced by Gravity for a Revolute Joint with Unit Length Arm")
 ax.legend()
+fig.set_tight_layout(True)
 plt.show()
 
 fig, ax = plt.subplots()
 ax.set_xlim(0, np.pi)
-ax.set_ylim(-300, 300)
+ax.set_ylim(0, 300)
 ax.set_xlabel("Arm Angle (rads)")
 ax.set_ylabel("Joint Torque (Nm)")
 ax.set_title("Moment Induced by Gravity for a Revolute Joint with Unit Length Arm")
@@ -69,11 +70,12 @@ n_frames = 100
 axis = np.array([0.707, 0.707, 0])
 ani = animation.FuncAnimation(fig, make_update(n_frames, axis),
                               frames=n_frames, interval=50, blit=False)
+fig.set_tight_layout(True)
 plt.show()
 
 fig, ax = plt.subplots()
 ax.set_xlim(0, np.pi)
-ax.set_ylim(-200, 200)
+ax.set_ylim(0, 200)
 ax.set_xlabel("Arm Angle (rads)")
 ax.set_ylabel("Joint Torque (Nm)")
 ax.set_title("Moment Induced by Gravity for a Revolute Joint with Unit Length Arm")
@@ -105,4 +107,6 @@ n_frames=200
 axis = np.array([1, 0, 0])
 ani = animation.FuncAnimation(fig, make_update(n_frames, axis),
                               frames=n_frames, interval=50, blit=False)
+
+fig.set_tight_layout(True)
 plt.show()
