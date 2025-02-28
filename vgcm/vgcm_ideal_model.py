@@ -171,6 +171,4 @@ def make_compensator(fuzzy_adjustment_speed: str, joint_id: int):
         x_max = X_MAX[joint_id]
         alpha_k = (k_max - k_min) / ALPHA_MUL_K[fuzzy_adjustment_speed]
         alpha_x = (x_max - x_min) / ALPHA_MUL_X[fuzzy_adjustment_speed]
-        alpha_k = 9e9
-        alpha_x = 9e9
         return VGCMSpringModel(k_min, k_max, x_min, x_max, alpha_k, alpha_x)

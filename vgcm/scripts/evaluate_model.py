@@ -35,7 +35,7 @@ def main(args):
     elif args.experiment == 'weights_linear':
         _experiment = WeightChangeLinearExperiment(sim)
     elif args.experiment == 'lissajous':
-        _experiment = LissajousExperiment(sim)
+        _experiment = LissajousExperiment(sim, args.with_compensation)
 
     sim.run()
 

@@ -10,7 +10,7 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 
 class LissajousExperiment(ExperimentBase):
-    def __init__(self, sim):
+    def __init__(self, sim, compensation_type: str):
         self.start_time = 0.5
 
         self.period = 10.
@@ -25,7 +25,9 @@ class LissajousExperiment(ExperimentBase):
         self.vmax_x = 1.5
         self.vmax_yaw = 2.
 
-        super().__init__(sim, 20. + self.start_time)
+        self.compensation_type = compensation_type
+
+        super().__init__(sim, 60. + self.start_time)
 
     def update(self):
         self.update_history()
@@ -56,17 +58,25 @@ class LissajousExperiment(ExperimentBase):
         df = self.state_histories[0]
         timesteps = df["step"]
         for i, (idx, name) in enumerate(zip(joint_idxs, joint_names)):
-            tau = df[f"tau{idx}"].rolling(window=5000).mean()
+            tau_raw = df[f"tau{idx}"]
+            tau_ma = df[f"tau{idx}"].rolling(window=5000).mean()
+            q = df[f"q{i}"]
             gc = df[f"gc{i}_tau"]
+            actuator_tau = tau_raw - gc
             ax_t = axes[i]
-            line_t, = ax_t.plot(timesteps, tau, label=f'Torque (5s MA)', color=colours[0])
-            line_gc, = ax_t.plot(timesteps, gc, label=f'Compensation', color=colours[1])
+            ax_p = ax_t.twinx()
+            line_raw, = ax_t.plot(timesteps, tau_raw, label=f'Torque', color=colours[0])
+            line_ma, = ax_t.plot(timesteps, tau_ma, label=f'Torque (5s MA)', color=colours[1])
+            line_gc, = ax_t.plot(timesteps, gc, label=f'Compensation', color=colours[2])
+            line_act, = ax_t.plot(timesteps, actuator_tau, label=f'Required Actuator Torque', color=colours[3])
+            line_pos, = ax_p.plot(timesteps, q, label=f'Joint Position', color=colours[4])
             ax_t.set_ylabel("Torque (Nm)")
+            ax_p.set_ylabel("Position (rad)")
             ax_t.set_title(f"{name}")
             ax_t.set_xlabel('Time (s)')
-            lines = [line_t, line_gc]
+            lines = [line_raw, line_ma, line_gc, line_act, line_pos]
             labels = [l.get_label() for l in lines]
-            ax_t.legend(lines, labels, loc="upper right")
+            ax_t.legend(lines, labels, loc="best")
 
         cmd_vel = df["cmd_x"]
         base_vel = df["base_lin_vel_x"]
@@ -124,4 +134,4 @@ class LissajousExperiment(ExperimentBase):
             sim.mujoco_data_instances[i].qpos[3:7] = quaternion.as_float_array(target_quat)
     
     def experiment_name(self):
-        return "lissajous_trajectory_experiment"
+        return "lissajous_trajectory_experiment_" + self.compensation_type + "_compensation"
