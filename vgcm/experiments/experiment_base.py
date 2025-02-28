@@ -5,6 +5,7 @@ import os
 
 from legged_gym import LEGGED_GYM_ROOT_DIR
 
+
 class ExperimentBase(ABC):
     def __init__(self, sim, duration: float):
         """
@@ -19,6 +20,8 @@ class ExperimentBase(ABC):
         self.n_robots = sim.num_robots
         self.sim.set_test_duration(duration)
         self.sim.register_callback(self.update)
+        # Update sim steps
+        self.sim.set_test_duration(duration)
         self.prepare_sim(self.sim)
         self.state_histories = [
             pd.DataFrame(np.nan,
@@ -39,7 +42,7 @@ class ExperimentBase(ABC):
         if self.current_step % 1000 == 0:
             print(f"Step {self.current_step} / {self.sim.steps}")
         """Check if the experiment duration has elapsed and signal termination."""
-        if self.sim.steps > 0 and self.current_step > self.sim.steps:
+        if self.sim.steps > 0 and self.current_step == self.sim.steps:
             self.sim.signal_shutdown()
             self.finish()
             return True

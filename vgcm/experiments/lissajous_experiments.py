@@ -25,27 +25,67 @@ class LissajousExperiment(ExperimentBase):
         self.vmax_x = 1.5
         self.vmax_yaw = 2.
 
-        super().__init__(sim, 60. + self.start_time)
+        super().__init__(sim, 20. + self.start_time)
 
     def update(self):
-        if self.sim.states[0].stamp < self.start_time:
-            return
-        for idx, state in enumerate(self.sim.states):
-            pos = state.base_pos
-            quat = state.base_quat
-            quat = quaternion.from_float_array([quat[3], quat[0], quat[1], quat[2]])
-            lin_vel = state.base_lin_vel
-            ang_vel = state.base_ang_vel
-            t = state.stamp + self.sim.dt - self.start_time
-            cmd = self.get_velocity_command(pos, quat, lin_vel, ang_vel, t)
-            self.sim.set_command(idx, cmd)
+        self.update_history()
+        if self.sim.states[0].stamp >= self.start_time:
+            for idx, state in enumerate(self.sim.states):
+                pos = state.base_pos
+                quat = state.base_quat
+                quat = quaternion.from_float_array([quat[3], quat[0], quat[1], quat[2]])
+                lin_vel = state.base_lin_vel
+                ang_vel = state.base_ang_vel
+                t = state.stamp + self.sim.dt - self.start_time
+                cmd = self.get_velocity_command(pos, quat, lin_vel, ang_vel, t)
+                self.sim.set_command(idx, cmd)
 
-#        if self.is_done():
-#            print("Experiment Finished.")
-    
+        if self.is_done():
+            print("Experiment Finished.")
+
     def finish(self):
-        pass
-    
+        print("Processing Experiment Results")
+        self.save_results()
+        joint_names = [
+            "abad_L_Joint", "hip_L_Joint", "knee_L_Joint",# "wheel_L_Joint",
+            "abad_R_Joint", "hip_R_Joint", "knee_R_Joint",# "wheel_R_Joint"
+        ]
+        joint_idxs = [0, 1, 2, 4, 5, 6]
+        fig, axes = plt.subplots(2, 3, figsize=(10, 8))
+        axes = axes.flatten()
+        df = self.state_histories[0]
+        timesteps = df["step"]
+        for i, (idx, name) in enumerate(zip(joint_idxs, joint_names)):
+            tau = df[f"tau{idx}"].rolling(window=5000).mean()
+            gc = df[f"gc{i}_tau"]
+            ax_t = axes[i]
+            line_t, = ax_t.plot(timesteps, tau, label=f'Torque (5s MA)', color=colours[0])
+            line_gc, = ax_t.plot(timesteps, gc, label=f'Compensation', color=colours[1])
+            ax_t.set_ylabel("Torque (Nm)")
+            ax_t.set_title(f"{name}")
+            ax_t.set_xlabel('Time (s)')
+            lines = [line_t, line_gc]
+            labels = [l.get_label() for l in lines]
+            ax_t.legend(lines, labels, loc="upper right")
+
+        cmd_vel = df["cmd_x"]
+        base_vel = df["base_lin_vel_x"]
+        fig2, ax = plt.subplots()
+        line_cmd, = ax.plot(timesteps, cmd_vel, label=f'Command X Vel')
+        line_act, = ax.plot(timesteps, base_vel, label=f'Actual X Vel')
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Velocity (m/s)')
+        lines = [line_cmd, line_act]
+        labels = [l.get_label() for l in lines]
+        ax.legend(lines, labels, loc="lower right")
+
+        # Column Titles
+        ax.set_title('Base Velocity')
+
+        fig.set_tight_layout(True)
+        fig2.set_tight_layout(True)
+        plt.show()
+
     def get_lissajous_trajectory(self, t):
         pos_target = np.array([
             self.alpha * np.cos(2 * np.pi * (t+self.offset) / self.period),

@@ -4,6 +4,7 @@ import os
 from legged_gym import LEGGED_GYM_ROOT_DIR
 from vgcm.mujoco_sim import Simulator
 from vgcm.onnx_controller import Controller
+from vgcm.vgcm_ideal_model import make_compensator, COMPENSATION_OPTIONS
 
 from vgcm.experiments.linear_experiments import BasicLinearExperiment, WeightChangeLinearExperiment
 from vgcm.experiments.lissajous_experiments import LissajousExperiment
@@ -22,16 +23,20 @@ def main(args):
         if model_file.endswith(".onnx") and args.ctrl_name in model_file:
             onnx_model_path = os.path.join(args.onnx_dir, model_file)
             controllers.append(Controller(onnx_model_path))
-    compensators = [None for _ in controllers]
+    jnt_compensators = []
+    for jnt_id in range(6):
+        jnt_compensators.append(make_compensator(args.with_compensation, jnt_id))
+    compensators = [jnt_compensators for _ in controllers]
     sim = Simulator(
         args.xml_path, controllers, compensators,
         headless=args.headless)
     if args.experiment == 'basic_linear':
-        experiment = BasicLinearExperiment(sim)
+        _experiment = BasicLinearExperiment(sim)
     elif args.experiment == 'weights_linear':
-        experiment = WeightChangeLinearExperiment(sim)
+        _experiment = WeightChangeLinearExperiment(sim)
     elif args.experiment == 'lissajous':
-        experiment = LissajousExperiment(sim)
+        _experiment = LissajousExperiment(sim)
+
     sim.run()
 
 
@@ -46,6 +51,7 @@ def parse_args():
     parser.add_argument("--ctrl_name", type=str, default="", help="Only onnx files with <ctrl_name> in their name will be used")
     parser.add_argument("--headless", action='store_true', help="Run without visualiser")
     parser.add_argument("--experiment", type=str, choices=EXPERIMENT_CHOICES, required=True, help=f"Choose the experiment from {EXPERIMENT_CHOICES}")
+    parser.add_argument("--with_compensation", type=str, choices=COMPENSATION_OPTIONS, default='none', help=f"Choose which compensator parameters to use. Options are {COMPENSATION_OPTIONS}")
     args = parser.parse_args()
     return args
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class RobotState:
     def __init__(self, has_gravity_compensators=False):
         self.num_joints = 8
@@ -21,7 +22,7 @@ class RobotState:
         self.has_gravity_compensators = has_gravity_compensators
         if self.has_gravity_compensators:
             # Don't compensate wheels
-            self.num_compensators = num_joints-2
+            self.num_compensators = self.num_joints-2
             # Spring constant
             self.gc_k = np.zeros(self.num_compensators)
             # Zero position
@@ -30,6 +31,8 @@ class RobotState:
             self.gc_tk = np.zeros(self.num_compensators)
             # Target zero position
             self.gc_tx = np.zeros(self.num_compensators)
+            # Target zero position
+            self.gc_tau = np.zeros(self.num_compensators)
         else:
             self.num_compensators = 0
 
@@ -59,6 +62,7 @@ class RobotState:
                 entry[f"gc{i}_zero_pos"] = self.gc_x[i]
                 entry[f"gc{i}_target_stiffness"] = self.gc_tk[i]
                 entry[f"gc{i}_target_zero_pos"] = self.gc_tx[i]
+                entry[f"gc{i}_tau"] = self.gc_tau[i]
         return entry
 
     def __str__(self):
