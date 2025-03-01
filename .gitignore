@@ -53,7 +53,7 @@ Thumbs.db
 # logs
 logs
 runs
-vgcm/experiment_results
+vgcm/experiment_results/plots
 remote_experiments
 
 # other

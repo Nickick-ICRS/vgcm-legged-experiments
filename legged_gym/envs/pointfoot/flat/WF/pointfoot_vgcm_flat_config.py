@@ -14,7 +14,7 @@ class PointFootVGCMFlatCfg(PointFootFlatCfg):
         k_max = K_MAX
         x_min = X_MIN
         x_max = X_MAX
-        k = (K_MIN + K_MAX) / 2
+        k = (K_MIN + K_MAX) / 2.
         default_vgcm_stiffnesses = {  # target stiffness when action = 0.0
             "abad_L_Joint": k[0],
             "hip_L_Joint": k[1],
@@ -55,8 +55,8 @@ class PointFootVGCMFlatCfg(PointFootFlatCfg):
         # action_scale_vel is the action scale of joints that use velocity control
         action_scale_pos = 0.25
         action_scale_vel = 8
-        action_scale_stiffness = (K_MAX - K_MIN) / 2
-        action_scale_equilibrium = (X_MAX - X_MIN) / 2
+        action_scale_stiffness = (K_MAX - K_MIN) / 2.
+        action_scale_equilibrium = (X_MAX - X_MIN) / 2.
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
 
