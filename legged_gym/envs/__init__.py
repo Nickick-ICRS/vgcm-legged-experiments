@@ -60,9 +60,12 @@ if robot_type.startswith("PF"):
     task_registry.register("pointfoot_flat", PointFoot, PointFootFlatCfg(), PointFootFlatCfgPPO())
 elif robot_type.startswith("WF"):
     from .pointfoot.WF.pointfoot import PointFoot
+    from .pointfoot.WF.pointfoot_vgcm import PointFootVGCM
     from legged_gym.envs.pointfoot.mixed_terrain.pointfoot_rough_config import PointFootRoughCfg, PointFootRoughCfgPPO
     from legged_gym.envs.pointfoot.flat.WF.pointfoot_flat_config import PointFootFlatCfg, PointFootFlatCfgPPO
+    from legged_gym.envs.pointfoot.flat.WF.pointfoot_vgcm_flat_config import PointFootVGCMFlatCfg, PointFootVGCMFlatCfgPPO
     task_registry.register("pointfoot_flat", PointFoot, PointFootFlatCfg(), PointFootFlatCfgPPO())
+    task_registry.register("pointfoot_flat_vgcm", PointFootVGCM, PointFootVGCMFlatCfg(), PointFootVGCMFlatCfgPPO())
 elif robot_type.startswith("SF"):
     from .pointfoot.SF.pointfoot import PointFoot
     from legged_gym.envs.pointfoot.mixed_terrain.pointfoot_rough_config import PointFootRoughCfg, PointFootRoughCfgPPO
