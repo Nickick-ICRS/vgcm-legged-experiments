@@ -339,8 +339,8 @@ class PointFootVGCM:
                                              self.actions, # 轮足相比点足扩展了2维，从6到8
                                              self.commands[:, :3] * self.commands_scale,
                                              self.vgcm_alphas,
-                                             self.vgcm_ks[:, self.vgcm_idxs],
-                                             self.vgcm_xs[:, self.vgcm_idxs]
+                                             self.vgcm_ks[:, self.vgcm_idxs] * self.obs_scales.vgcm_k,
+                                             self.vgcm_xs[:, self.vgcm_idxs] * self.obs_scales.vgcm_x,
                                              ), dim=-1)
 
     def compute_proprioceptive_observations(self):
@@ -372,8 +372,8 @@ class PointFootVGCM:
                                              self.actions,
                                              self.commands[:, :3] * self.commands_scale,
                                              self.vgcm_alphas,
-                                             self.vgcm_ks[:, self.vgcm_idxs],
-                                             self.vgcm_xs[:, self.vgcm_idxs]
+                                             self.vgcm_ks[:, self.vgcm_idxs] * self.obs_scales.vgcm_k,
+                                             self.vgcm_xs[:, self.vgcm_idxs] * self.obs_scales.vgcm_x,
                                              ), dim=-1)
 
     def create_sim(self):

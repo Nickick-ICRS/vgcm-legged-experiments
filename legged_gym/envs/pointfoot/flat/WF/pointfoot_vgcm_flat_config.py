@@ -62,13 +62,13 @@ class PointFootVGCMFlatCfg(PointFootFlatCfg):
 
     class noise(PointFootFlatCfg.noise):
         class noise_scales(PointFootFlatCfg.noise.noise_scales):
-            vgcm_k = (K_MAX - K_MIN) / 20.
-            vgcm_x = (X_MAX - X_MIN) / 20.
+            vgcm_k = 0.05
+            vgcm_x = 0.001
 
     class normalization(PointFootFlatCfg.normalization):
         class obs_scales(PointFootFlatCfg.normalization.obs_scales):
             vgcm_k = 2 / (K_MAX - K_MIN)
-            vgcm_x = 2 / (K_MAX - K_MIN)
+            vgcm_x = 2 / (X_MAX - X_MIN)
 
     class rewards(PointFootFlatCfg.rewards):
         class scales(PointFootFlatCfg.rewards.scales):

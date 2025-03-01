@@ -13,7 +13,7 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 
 main_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'vgcm/experiment_results')
-model = 'VGCM-cv'
+model = 'VGCM-ma'
 path_to_files = os.path.join(main_dir, model)
 
 dfs = {}
