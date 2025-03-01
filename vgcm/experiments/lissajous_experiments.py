@@ -117,7 +117,7 @@ class LissajousExperiment(ExperimentBase):
         err_yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
         err_x = np.sqrt(np.power(error[0], 2) + np.power(error[1], 2)) * np.cos(err_yaw)
         return self.calculate_command(err_x, err_yaw, current_lin_vel, current_ang_vel)
-    
+
     def calculate_command(self, err_x, err_yaw, lin_vel, ang_vel):
         cmd = np.array([
             self.kp_x * err_x - self.kd_x * lin_vel[0],
@@ -136,6 +136,6 @@ class LissajousExperiment(ExperimentBase):
         for i in range(self.n_robots):
             sim.set_command(i, np.array([0, 0, 0], dtype=np.float32))
             sim.mujoco_data_instances[i].qpos[3:7] = quaternion.as_float_array(target_quat)
-    
+
     def experiment_name(self):
         return "lissajous_trajectory_experiment_" + self.compensation_type + "_compensation"

@@ -118,9 +118,10 @@ class Simulator:
             # Set gravity compensators to current position
             idxs = [0, 1, 2, 4, 5, 6]
             for i, comp in enumerate(self.compensators[robot_idx]):
-                x = data.qpos[7+idxs[i]]
-                comp.preload = x
-                comp.tx = x
+                if comp is not None:
+                    x = data.qpos[7+idxs[i]]
+                    comp.preload = x
+                    comp.tx = x
 
         if self.visualise:
             rate = Rate(60.)

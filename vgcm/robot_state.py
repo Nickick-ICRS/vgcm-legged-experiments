@@ -88,5 +88,5 @@ class RobotState:
             state_str += f"  Gravity Compensator B: {self.gc_b}\n"
             state_str += f"  Gravity Compensator Set Point: {self.gc_sp}\n"
             state_str += f"  Gravity Compensator Current Position: {self.gc_cp}\n"
-        
+
         return state_str
