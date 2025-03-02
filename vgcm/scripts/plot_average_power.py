@@ -13,23 +13,25 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=colours)
 
 
 main_dir = os.path.join(LEGGED_GYM_ROOT_DIR, 'vgcm/experiment_results')
-model = 'VGCM-ma'
-path_to_files = os.path.join(main_dir, model)
+models = ['VGCM-ma', 'VGCM-cv']
 
 dfs = {}
-for file in os.listdir(path_to_files):
-    filepath = os.path.join(path_to_files, file)
-    for opt in COMPENSATION_OPTIONS:
-        if opt in filepath:
-            dfs[opt] = pd.read_csv(filepath)
+for model in models:
+    dfs[model] = {}
+    path_to_files = os.path.join(main_dir, model)
+    for file in os.listdir(path_to_files):
+        filepath = os.path.join(path_to_files, file)
+        for opt in COMPENSATION_OPTIONS:
+            if opt in filepath:
+                dfs[model][opt] = pd.read_csv(filepath)
 
 
 WHEELS = [3, 7]
 COMPENSATED = [0, 1, 2, 4, 5, 6]
 
 
-def get_power_array(opt):
-    df = dfs[opt]
+def get_power_array(model, opt):
+    df = dfs[model][opt]
     P = np.zeros(len(df))
     t = df["step"]
     for i in range(8):
@@ -56,11 +58,19 @@ def get_power_array(opt):
 fig, axes = plt.subplots(2, 2, figsize=(6, 6), constrained_layout=True)
 
 for ax, opt in zip(axes.flat, COMPENSATION_OPTIONS):
-    P, t = get_power_array(opt)
-    ax.plot(t, P, label=opt)
+    if opt == 'none':
+        P, t = get_power_array('VGCM-cv', opt)
+        ax.plot(t, P, label=f"{opt}")
+        print(f"(Model: {opt}) Mean Power Draw {P.mean()}")
+    else:
+        for model in models:
+            P, t = get_power_array(model, opt)
+            ax.plot(t, P, label=f"{model}-{opt}")
+            print(f"(Model: {model}-{opt}) Mean Power Draw {P.mean()}")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Power (W)")
     ax.legend()
-    print(f"(Compensation: {opt}) Mean Power Draw {P.mean()}")
+    ax.set_ylim(0, 40_000)
+    ax.set_xlim(left=5)
 
 plt.show()

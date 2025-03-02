@@ -59,8 +59,8 @@ class Simulator:
         self.base_id = self.mujoco_models[0].body(name="base_Link").id
         self.base_mass = self.mujoco_models[0].body_mass[self.base_id]
 
-        # 5s moving averages for GC torque calcs
-        self.tau_ma_n = 5. / self.dt
+        # 0.5s moving averages for GC torque calcs
+        self.tau_ma_n = 0.5 / self.dt
         self.tau_mas = [np.zeros(8, dtype=np.float32) for _ in range(self.num_robots)]
         self.prev_tau = [np.zeros(8, dtype=np.float32) for _ in range(self.num_robots)]
         self.compensation_tau = [np.zeros(6, dtype=np.float32) for _ in range(self.num_robots)]
@@ -221,15 +221,16 @@ class Simulator:
         q = self.states[robot_idx].q[idxs]
         Jp_l, Jp_r, dJp_l, dJp_r = self.calc_jacs(robot_idx)
         # Use forces directly or Moving Average?
-        # bias_tau = self.tau_mas[robot_idx]
-        bias_tau = self.mujoco_data_instances[robot_idx].qfrc_actuator[6:]
+        bias_tau = self.tau_mas[robot_idx]
+        # bias_tau = self.mujoco_data_instances[robot_idx].qfrc_actuator[6:]
 
         # ideal stiffness = J_dot.T @ J @ (tau - Mqddot - C)
         if self.target_k[robot_idx] is not None:
             stiffness = self.target_k[robot_idx]
             zero_pos = self.target_x[robot_idx]
         else:
-            stiffness = dJp_l.T @ Jp_l @ bias_tau + dJp_r.T @ Jp_r @ bias_tau
+            stiffness = dJp_l.T @ Jp_l @ bias_tau + dJp_r.T @ Jp_r @ bias_tau \
+                      + Jp_l.T @ dJp_l @ bias_tau + Jp_r.T @ dJp_r @ bias_tau
             # Stiffness can't be negative
             stiffness = np.clip(np.abs(stiffness[idxs]), K_MIN, K_MAX)
             zero_pos = np.clip(q - bias_tau[idxs] / stiffness, X_MIN, X_MAX)

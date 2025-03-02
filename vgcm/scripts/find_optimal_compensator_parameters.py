@@ -81,7 +81,7 @@ def compute_ideal_stiffnesses(q_pos, q_vel, tau, base_position, base_quaternion)
     dJ_l = pin.getFrameJacobianTimeVariation(model, data, wheel_l_id, pin.LOCAL)
     dJ_r = pin.getFrameJacobianTimeVariation(model, data, wheel_r_id, pin.LOCAL)
 
-    k = dJ_l.T @ J_l @ tau + dJ_r.T @ J_r @ tau
+    k = dJ_l.T @ J_l @ tau + dJ_r.T @ J_r @ tau + J_l.T @ dJ_l @ tau + J_r.T @ dJ_r @ tau
     # Pinocchio idxs are our idx+1
     idxs = [1, 2, 3, 5, 6, 7]
 
