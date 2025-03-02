@@ -55,8 +55,6 @@ class PointFootVGCMFlatCfg(PointFootFlatCfg):
         # action_scale_vel is the action scale of joints that use velocity control
         action_scale_pos = 0.25
         action_scale_vel = 8
-        action_scale_stiffness = (K_MAX - K_MIN) / 2.
-        action_scale_equilibrium = (X_MAX - X_MIN) / 2.
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
 

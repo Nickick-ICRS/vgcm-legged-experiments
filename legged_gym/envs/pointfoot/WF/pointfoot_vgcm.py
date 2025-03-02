@@ -561,17 +561,8 @@ class PointFootVGCM:
             self.vgcm_x_max[idxs])
 
         dt = self.sim_params.dt
-        kdir = torch.sign(self.vgcm_tks - self.vgcm_ks)
-        xdir = torch.sign(self.vgcm_txs - self.vgcm_xs)
-        dk = kdir * self.vgcm_dk * dt
-        dx = xdir * self.vgcm_dx * dt
-        # Find values that cross beyond the target
-        mask_k = (self.vgcm_ks - self.vgcm_tks) * (self.vgcm_ks + dk - self.vgcm_tks) <= 0
-        mask_x = (self.vgcm_xs - self.vgcm_txs) * (self.vgcm_xs + dx - self.vgcm_txs) <= 0
-        self.vgcm_ks += dk
-        self.vgcm_xs += dx
-        self.vgcm_ks[mask_k] = self.vgcm_tks[mask_k]
-        self.vgcm_xs[mask_x] = self.vgcm_txs[mask_x]
+        dk = torch.clip(self.vgcm_tks - self.vgcm_ks, -self.vgcm_dk * dt, self.vgcm_dk * dt)
+        dx = torch.clip(self.vgcm_txs - self.vgcm_xs, -self.vgcm_dx * dt, self.vgcm_dx * dt)
         self.vgcm_ks = torch.clip(self.vgcm_ks + dk, self.vgcm_k_min, self.vgcm_k_max)
         self.vgcm_xs = torch.clip(self.vgcm_xs + dx, self.vgcm_x_min, self.vgcm_x_max)
 

@@ -32,7 +32,7 @@ class ControlSignal:
 class Controller:
     def __init__(self, onnx_path, vgcm_alphas=np.zeros((2,))):
         self.session = load_onnx_model(onnx_path)
-        self.controls_comps = True if 'VGCM' in os.path.basename(onnx_path) else False
+        self.controls_comps = True if 'vgcm' in os.path.basename(onnx_path) else False
         self.n_actions = 20 if self.controls_comps else 8
         self._prev_actions = np.zeros(self.n_actions, dtype=np.float32)
         self._prev_actions_scaled = np.zeros(self.n_actions, dtype=np.float32)
@@ -54,11 +54,18 @@ class Controller:
 
         self._default_dof_pos = np.zeros(8, dtype=np.float32)
         self._torque_lims = np.array([80, 80, 80, 40, 80, 80, 80, 40], dtype=np.float32)
+        if self.controls_comps:
+            self._obs_scale_vgcm_k = np.array(2. / (K_MAX - K_MIN))
+            self._obs_scale_vgcm_x = np.array(2. / (X_MAX - X_MIN))
+            self._default_vgcm_k = (K_MIN + K_MAX) / 2
+            self._default_vgcm_x = np.copy(self._default_dof_pos)[[0, 1, 2, 4, 5, 6]]
+            self._vgcm_k_range = np.array(K_MAX - K_MIN)
+            self._vgcm_x_range = np.array(X_MAX - X_MIN)
 
     def control(self, robot_state: RobotState, commands):
         state_input = self._extract_state(robot_state, commands)
         inputs = {self.session.get_inputs()[0].name: state_input}
-        outputs = self.session.run(None, inputs)[0]
+        outputs = np.clip(self.session.run(None, inputs)[0], -100, 100)
         self._prev_actions = outputs
         WHEELS = [3, 7]
         actions_scaled = self._scale_pos * outputs[:8] + self._default_dof_pos
@@ -67,11 +74,11 @@ class Controller:
         # Wheels command v, others command x
         taus = self._Kps * (actions_scaled - robot_state.q) - self._Kps * robot_state.dq
         taus[WHEELS] = self._Kds[WHEELS] * (actions_scaled[WHEELS] - robot_state.dq[WHEELS])
-        taus = np.clip(taus, -self._torque_lims, self._torque_lims)
+        #taus = np.clip(taus, -self._torque_lims, self._torque_lims)
 
         if self.controls_comps:
-            tk = np.clip((np.ones(6, dtype=float) + outputs[8:14]) * (K_MAX - K_MIN) / 2., K_MIN, K_MAX)
-            tx = np.clip((np.ones(6, dtype=float) + outputs[8:14]) * (X_MAX - X_MIN) / 2., K_MIN, K_MAX)
+            tk = np.clip(self._default_vgcm_k + outputs[8:14] * self._vgcm_k_range, K_MIN, K_MAX)
+            tx = np.clip(self._default_vgcm_x + outputs[14:20] * self._vgcm_x_range, X_MIN, X_MAX)
             ctrl = ControlSignal(taus, True, tk, tx)
         else:
             ctrl = ControlSignal(taus, False)
@@ -82,7 +89,7 @@ class Controller:
         pos_dofs = [0, 1, 2,
                     4, 5, 6]
         if self.controls_comps:
-            obs = np.concatenate([
+            obs = np.clip(np.concatenate([
                 state.base_ang_vel * self._obs_scale_base_ang_vel,
                 state.projected_gravity * self._obs_scale_g,
                 (state.q - self._default_dof_pos)[pos_dofs] * self._obs_scale_pos,
@@ -91,16 +98,16 @@ class Controller:
                 commands[:3] * self._obs_scale_cmd,
                 # Forgot to scale when training
                 self._vgcm_alphas,
-                state.gc_k * self._obs_scales_vgcm_k,
+                state.gc_k * self._obs_scale_vgcm_k,
                 state.gc_x * self._obs_scale_vgcm_x,
-            ])
+            ]), -100, 100)
         else:
-            obs = np.concatenate([
+            obs = np.clip(np.concatenate([
                 state.base_ang_vel * self._obs_scale_base_ang_vel,
                 state.projected_gravity * self._obs_scale_g,
                 (state.q - self._default_dof_pos)[pos_dofs] * self._obs_scale_pos,
                 state.dq * self._obs_scale_vel,
                 self._prev_actions,
                 commands[:3] * self._obs_scale_cmd
-            ])
+            ]), -100, 100)
         return obs.astype(np.float32)

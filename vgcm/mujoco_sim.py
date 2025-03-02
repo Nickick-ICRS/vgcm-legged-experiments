@@ -64,6 +64,8 @@ class Simulator:
         self.tau_mas = [np.zeros(8, dtype=np.float32) for _ in range(self.num_robots)]
         self.prev_tau = [np.zeros(8, dtype=np.float32) for _ in range(self.num_robots)]
         self.compensation_tau = [np.zeros(6, dtype=np.float32) for _ in range(self.num_robots)]
+        self.target_k = [None for _ in range(self.num_robots)]
+        self.target_x = [None for _ in range(self.num_robots)]
 
         if self.visualise:
             self.viewer = mujoco.viewer.launch_passive(
@@ -162,13 +164,12 @@ class Simulator:
             self.states[robot_idx].tau[i] = mujoco_data.ctrl[i]
 
         for i in range(self.states[robot_idx].num_compensators):
-            # TODO: Process GC states
             comp = self.compensators[robot_idx][i]
             self.states[robot_idx].gc_k[i] = comp.k
             self.states[robot_idx].gc_tk[i] = comp.tk
             self.states[robot_idx].gc_x[i] = comp.preload
             self.states[robot_idx].gc_tx[i] = comp.tx
-            self.states[robot_idx].gc_tau = self.compensation_tau[robot_idx]
+        self.states[robot_idx].gc_tau = self.compensation_tau[robot_idx]
 
         self.states[robot_idx].base_pos = mujoco_data.xpos[self.base_id]
         # Mujoco stores the quat W X Y Z, we want X Y Z W
@@ -199,6 +200,9 @@ class Simulator:
         control = self.controllers[robot_idx].control(self.states[robot_idx], self.commands[robot_idx])
         for i in range(self.states[robot_idx].num_joints):
             self.mujoco_data_instances[robot_idx].ctrl[i] = control.tau[i]
+            if control.controls_compensators:
+                self.target_k[robot_idx] = control.tk
+                self.target_x[robot_idx] = control.tx
 
     def apply_forces(self, robot_idx):
         # Gravity compensators
@@ -216,15 +220,19 @@ class Simulator:
         idxs = [0, 1, 2, 4, 5, 6]
         q = self.states[robot_idx].q[idxs]
         Jp_l, Jp_r, dJp_l, dJp_r = self.calc_jacs(robot_idx)
-        bias_tau = self.tau_mas[robot_idx]
         # Use forces directly or Moving Average?
-        # bias_tau = self.mujoco_data_instances[robot_idx].qfrc_actuator[6:]
+        # bias_tau = self.tau_mas[robot_idx]
+        bias_tau = self.mujoco_data_instances[robot_idx].qfrc_actuator[6:]
 
         # ideal stiffness = J_dot.T @ J @ (tau - Mqddot - C)
-        stiffness = dJp_l.T @ Jp_l @ bias_tau + dJp_r.T @ Jp_r @ bias_tau
-        # Stiffness can't be negative
-        stiffness = np.clip(np.abs(stiffness[idxs]), K_MIN, K_MAX)
-        zero_pos = np.clip(q - bias_tau[idxs] / stiffness, X_MIN, X_MAX)
+        if self.target_k[robot_idx] is not None:
+            stiffness = self.target_k[robot_idx]
+            zero_pos = self.target_x[robot_idx]
+        else:
+            stiffness = dJp_l.T @ Jp_l @ bias_tau + dJp_r.T @ Jp_r @ bias_tau
+            # Stiffness can't be negative
+            stiffness = np.clip(np.abs(stiffness[idxs]), K_MIN, K_MAX)
+            zero_pos = np.clip(q - bias_tau[idxs] / stiffness, X_MIN, X_MAX)
 
         for i, (idx, comp) in enumerate(zip(idxs, self.compensators[robot_idx])):
             if comp is None:

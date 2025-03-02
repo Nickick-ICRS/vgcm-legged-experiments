@@ -4,7 +4,7 @@ import os
 from legged_gym import LEGGED_GYM_ROOT_DIR
 from vgcm.mujoco_sim import Simulator
 from vgcm.onnx_controller import Controller
-from vgcm.vgcm_ideal_model import make_compensator, COMPENSATION_OPTIONS
+from vgcm.vgcm_ideal_model import make_compensator, COMPENSATION_OPTIONS, ALPHA_MUL_K, ALPHA_MUL_X
 
 from vgcm.experiments.linear_experiments import BasicLinearExperiment, WeightChangeLinearExperiment
 from vgcm.experiments.lissajous_experiments import LissajousExperiment
@@ -19,10 +19,14 @@ EXPERIMENT_CHOICES = ['basic_linear', 'weights_linear', 'lissajous']
 
 def main(args):
     controllers = []
+    alphas = np.zeros((2,), dtype=float)
+    if args.with_compensation != 'none':
+        alphas[0] = ALPHA_MUL_K[args.with_compensation]
+        alphas[1] = ALPHA_MUL_X[args.with_compensation]
     for model_file in os.listdir(args.onnx_dir):
         if model_file.endswith(".onnx") and args.ctrl_name in model_file:
             onnx_model_path = os.path.join(args.onnx_dir, model_file)
-            controllers.append(Controller(onnx_model_path))
+            controllers.append(Controller(onnx_model_path, alphas))
     jnt_compensators = []
     for jnt_id in range(6):
         jnt_compensators.append(make_compensator(args.with_compensation, jnt_id))
