@@ -74,3 +74,49 @@ for ax, opt in zip(axes.flat, COMPENSATION_OPTIONS):
     ax.set_xlim(left=5)
 
 plt.show()
+
+fig, axes = plt.subplots(2, 3, figsize=(10, 8))
+joints = ['abad_L', 'hip_L', 'knee_L',
+          'abad_R', 'hip_R', 'knee_R']
+idxs = [0, 1, 2, 4, 5, 6]
+
+for i, (ax, idx, joint) in enumerate(zip(axes.flatten(), idxs, joints)):
+    for col, model in zip(colours, models):
+        df = dfs[model]['high']
+        t = df['step']
+        tau = df[f'tau{idx}']
+        gc = df[f'gc{i}_tau']
+        act_tau = tau - gc
+        ax.plot(t, tau, linestyle='solid', color=col, label=f"Required Torque ({model})")
+        ax.plot(t, act_tau, linestyle='dashed', color=col, label=f"Actuator Torque ({model})")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Torque (Nm)")
+    ax.set_xlim(left=5)
+    ax.set_title(f"{joint}")
+    ax.legend()
+fig.set_tight_layout(True)
+plt.show()
+
+fig, axes = plt.subplots(3, 1, figsize=(10, 8))
+
+to_plot = 5
+joint = joints[to_plot]
+idx = idxs[to_plot]
+for i, ax in enumerate(axes.flatten()):
+    # skip 'None'
+    opt = COMPENSATION_OPTIONS[i+1]
+    df = dfs['VGCM-cv'][opt]
+    t = df['step']
+    tau = df[f'tau{idx}']
+    gc = df[f'gc{to_plot}_tau']
+    act_tau = tau - gc
+    ax.plot(t, tau, label="Required Torque")
+    ax.plot(t, gc, linestyle='dashed', label=f"VGCM Torque")
+    ax.plot(t, act_tau, linestyle='dashed', label=f"Actuator Torque")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Torque (Nm)")
+    ax.set_title(f"{joint} (alpha='{opt}')")
+    ax.set_xlim(left=5)
+    ax.legend()
+fig.set_tight_layout(True)
+plt.show()

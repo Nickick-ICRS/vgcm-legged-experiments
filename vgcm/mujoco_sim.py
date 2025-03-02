@@ -221,8 +221,8 @@ class Simulator:
         q = self.states[robot_idx].q[idxs]
         Jp_l, Jp_r, dJp_l, dJp_r = self.calc_jacs(robot_idx)
         # Use forces directly or Moving Average?
-        bias_tau = self.tau_mas[robot_idx]
-        # bias_tau = self.mujoco_data_instances[robot_idx].qfrc_actuator[6:]
+        # bias_tau = self.tau_mas[robot_idx]
+        bias_tau = self.mujoco_data_instances[robot_idx].qfrc_actuator[6:]
 
         # ideal stiffness = J_dot.T @ J @ (tau - Mqddot - C)
         if self.target_k[robot_idx] is not None:
