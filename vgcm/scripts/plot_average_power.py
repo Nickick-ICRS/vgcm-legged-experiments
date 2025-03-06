@@ -33,6 +33,7 @@ COMPENSATED = [0, 1, 2, 4, 5, 6]
 def get_power_array(model, opt):
     df = dfs[model][opt]
     P = np.zeros(len(df))
+    v = df["base_lin_vel_x"]
     t = df["step"]
     for i in range(8):
         dq = df[f'dq{i}']
@@ -52,21 +53,25 @@ def get_power_array(model, opt):
             R = 0.144
 
         P += actuator_tau * dq + np.square(actuator_tau) * R / np.square(Kt)
-    return P, t
+    return P, t, v
 
 
 fig, axes = plt.subplots(2, 2, figsize=(6, 6), constrained_layout=True)
 
 for ax, opt in zip(axes.flat, COMPENSATION_OPTIONS):
     if opt == 'none':
-        P, t = get_power_array('VGCM-cv', opt)
+        P, t, v = get_power_array('VGCM-cv', opt)
         ax.plot(t, P, label=f"{opt}")
-        print(f"(Model: {opt}) Mean Power Draw {P.mean()}")
+        cot = (P / (10. * 9.81 * v.abs())).mean()
+        print(f"(Model: {opt}) Mean Power Draw {P.mean()}"
+              f" (COT): {cot}")
     else:
         for model in models:
-            P, t = get_power_array(model, opt)
+            P, t, v = get_power_array(model, opt)
             ax.plot(t, P, label=f"{model}-{opt}")
-            print(f"(Model: {model}-{opt}) Mean Power Draw {P.mean()}")
+            cot = (P / (10. * 9.81 * v.abs())).mean()
+            print(f"(Model: {model}-{opt}) Mean Power Draw {P.mean()}"
+                  f" (COT): {cot}")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Power (W)")
     ax.legend()
