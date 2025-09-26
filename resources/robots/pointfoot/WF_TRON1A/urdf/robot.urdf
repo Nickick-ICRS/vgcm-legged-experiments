@@ -61,12 +61,12 @@
         </plugin>
     </gazebo>
 
-    <!-- <link name="world"/>
-  <joint name="base_static_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 1"/>
-    <parent link="world"/>
-    <child link="base_Link"/>
-  </joint>  -->
+    <link name="world"/>
+    <joint name="base_free_joint" type="floating">
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="world"/>
+        <child link="base_Link"/>
+    </joint>
 
     <link
             name="base_Link">

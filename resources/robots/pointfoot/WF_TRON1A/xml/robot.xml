@@ -33,7 +33,7 @@
         <texture name="texplane" type="2d" builtin="checker" rgb1="0.35 0.35 0.35" rgb2="0.55 0.55 0.55" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
         <material name="matplane" reflectance="0.0" texture="texplane" texrepeat="1 1" texuniform="true"/>
     </asset>
-        <option timestep="0.001"/>
+        <option timestep="0.01"/>
 
     <worldbody>
         <geom name="floor" rgba="0.5 0.6 0.7 1" pos="0 0 0" size="0 0 0.25" type="plane" material="matplane" condim="3"/>
@@ -101,7 +101,71 @@
                     </body>
                 </body>
             </body>
-        </body>
+       </body>
+        <!-- Reference trajectory visualisation sites -->
+        <site name="chassis_ref_0" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.5" type="box"/>
+        <site name="chassis_ref_1" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.55" type="box"/>
+        <site name="chassis_ref_2" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.6" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_3" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.65" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_4" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.7" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_5" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.75" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_6" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.8" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_7" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.85" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_8" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.9" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_ref_9" size="0.05 0.05 0.05" rgba="0. 1. 0. 0.95" pos="0. 0. 0.05" type="box"/>
+        <site name="l_wheel_ref_0" size="0.05" rgba="0. 1. 0. 0.5" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_1" size="0.05" rgba="0. 1. 0. 0.55" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_2" size="0.05" rgba="0. 1. 0. 0.6" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_3" size="0.05" rgba="0. 1. 0. 0.65" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_4" size="0.05" rgba="0. 1. 0. 0.7" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_5" size="0.05" rgba="0. 1. 0. 0.75" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_6" size="0.05" rgba="0. 1. 0. 0.8" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_7" size="0.05" rgba="0. 1. 0. 0.85" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_8" size="0.05" rgba="0. 1. 0. 0.9" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_ref_9" size="0.05" rgba="0. 1. 0. 0.95" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_0" size="0.05" rgba="0. 1. 0. 0.5" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_1" size="0.05" rgba="0. 1. 0. 0.55" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_2" size="0.05" rgba="0. 1. 0. 0.6" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_3" size="0.05" rgba="0. 1. 0. 0.65" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_4" size="0.05" rgba="0. 1. 0. 0.7" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_5" size="0.05" rgba="0. 1. 0. 0.75" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_6" size="0.05" rgba="0. 1. 0. 0.8" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_7" size="0.05" rgba="0. 1. 0. 0.85" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_8" size="0.05" rgba="0. 1. 0. 0.9" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_ref_9" size="0.05" rgba="0. 1. 0. 0.95" pos="0. 0. 0.05" type="sphere"/>
+
+        <!-- Predicted trajectory visualisation sites -->
+        <site name="chassis_pred_0" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.5" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_1" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.55" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_2" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.6" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_3" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.65" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_4" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.7" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_5" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.75" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_6" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.8" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_7" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.85" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_8" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.9" pos="0. 0. 0.05" type="box"/>
+        <site name="chassis_pred_9" size="0.05 0.05 0.05" rgba="0. 0. 1. 0.95" pos="0. 0. 0.05" type="box"/>
+        <site name="l_wheel_pred_0" size="0.05" rgba="0. 0. 1. 0.5" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_1" size="0.05" rgba="0. 0. 1. 0.55" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_2" size="0.05" rgba="0. 0. 1. 0.6" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_3" size="0.05" rgba="0. 0. 1. 0.65" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_4" size="0.05" rgba="0. 0. 1. 0.7" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_5" size="0.05" rgba="0. 0. 1. 0.75" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_6" size="0.05" rgba="0. 0. 1. 0.8" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_7" size="0.05" rgba="0. 0. 1. 0.85" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_8" size="0.05" rgba="0. 0. 1. 0.9" pos="0. 0. 0.05" type="sphere"/>
+        <site name="l_wheel_pred_9" size="0.05" rgba="0. 0. 1. 0.95" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_0" size="0.05" rgba="0. 0. 1. 0.5" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_1" size="0.05" rgba="0. 0. 1. 0.55" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_2" size="0.05" rgba="0. 0. 1. 0.6" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_3" size="0.05" rgba="0. 0. 1. 0.65" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_4" size="0.05" rgba="0. 0. 1. 0.7" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_5" size="0.05" rgba="0. 0. 1. 0.75" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_6" size="0.05" rgba="0. 0. 1. 0.8" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_7" size="0.05" rgba="0. 0. 1. 0.85" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_8" size="0.05" rgba="0. 0. 1. 0.9" pos="0. 0. 0.05" type="sphere"/>
+        <site name="r_wheel_pred_9" size="0.05" rgba="0. 0. 1. 0.95" pos="0. 0. 0.05" type="sphere"/>
+ 
     </worldbody>
 
     <actuator>
@@ -128,5 +192,4 @@
         <jointpos name="knee_R_Joint"    joint="knee_R_Joint" />
         <jointpos name="wheel_R_Joint"   joint="wheel_R_Joint" />
     </sensor>
-
 </mujoco>
